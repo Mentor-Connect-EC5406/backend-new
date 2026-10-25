@@ -43,6 +43,7 @@ docs/database/schema/: source schemas from the Spring repo
 
 ## Auth
 - POST /api/auth/register (roles STUDENT or MENTOR only) and POST /api/auth/login return a JWT
+- On register, users.external_auth_id is set to the new users.id (column kept from the schema, NOT NULL UNIQUE)
 - JWT HS256 with JWT_SECRET, claims sub (user id), email, role, exp (24 h). Header: Authorization: Bearer <token>
 - Passwords: PBKDF2-SHA256 with Web Crypto, random salt per user, 100000 iterations (Workers maximum), stored as pbkdf2$iterations$salt$hash
 - A SUSPENDED account gets 403 on login and on every protected route
@@ -50,8 +51,8 @@ docs/database/schema/: source schemas from the Spring repo
 
 ## Business rules
 - Roles: STUDENT, MENTOR, ADMIN
-- Double booking: unique index uq_bookings_active_slot and slot status. Create the booking and set the slot to HOLD in one db.batch()
-- The booking module may update availability_slots.status (HOLD, BOOKED, AVAILABLE)
+- Double booking: unique index uq_bookings_active_slot and slot status. Create the booking and set the slot to HELD in one db.batch()
+- The booking module may update availability_slots.status (HELD, BOOKED, AVAILABLE)
 - POST /api/bookings/{id}/confirm: only the student of the booking, no real payment. Booking CONFIRMED, slot BOOKED
 - Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
 - Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed). Update the mentor rating after a review
