@@ -1,0 +1,14 @@
+name = "mentorconnect-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mentorconnect-db"
+database_id = "00000000-0000-0000-0000-000000000000"
