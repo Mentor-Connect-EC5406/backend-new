@@ -8,17 +8,23 @@ import { bookingController } from "./booking/controller/booking.controller";
 import { notificationController } from "./notification/controller/notification.controller";
 import { expirePendingBookings } from "./booking/service/booking-expiry.service";
 import { errorHandler, notFoundHandler } from "./exception/error-handler";
+import { nowIso } from "./util/time";
 
 const app = new Hono<AppEnv>();
 
 app.use("*", (c, next) => {
-  const allowed = c.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
+  const allowed = (c.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
   return cors({
     origin: (origin) => (allowed.includes(origin) ? origin : null),
     allowHeaders: ["Authorization", "Content-Type"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })(c, next);
 });
+
+app.get("/api/health", (c) => c.json({ status: "UP", time: nowIso() }));
 
 app.route("/api/auth", authController);
 app.route("/", userController);
