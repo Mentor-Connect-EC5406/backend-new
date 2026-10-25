@@ -55,7 +55,8 @@ backend-new/
 ├── wrangler.toml              D1 binding, cron trigger, [vars]
 ├── .dev.vars                  local secrets (git ignored)
 ├── migrations/
-│   └── 0001_init.sql          full schema, all tables
+│   ├── 0001_init.sql          full schema, all tables
+│   └── 0002_seed.sql          admin user (password hash only)
 ├── docs/
 │   ├── api/                   API specs, API-CHECKS.md, postman/edge-api/
 │   └── database/              ER diagram and source schemas
@@ -118,7 +119,9 @@ npx tsc --noEmit
 
 ### Create a local admin user
 
-ADMIN accounts cannot be registered through the API. There is no seed migration yet, so promote a registered user locally:
+ADMIN accounts cannot be registered through the API. `migrations/0002_seed.sql` creates one ADMIN user when the migrations are applied. It holds only the PBKDF2 hash, so ask the developer who generated it for the password (never share it in git or chat).
+
+For local testing you can also promote a registered test user:
 
 ```bash
 curl -X POST http://localhost:8787/api/auth/register -H "Content-Type: application/json" -d "{\"email\":\"admin@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Admin\",\"lastName\":\"X\"}"
@@ -329,8 +332,8 @@ Only the developer who owns the Cloudflare account runs these:
 ```bash
 npx wrangler login
 npx wrangler d1 create mentorconnect-db
-npx wrangler d1 migrations apply mentorconnect-db --remote
 npx wrangler secret put JWT_SECRET
+npx wrangler d1 migrations apply mentorconnect-db --remote
 npm run deploy
 ```
 
@@ -338,7 +341,10 @@ Before the first deploy:
 
 1. Put the real `database_id` from `d1 create` into `wrangler.toml`.
 2. Add the Netlify URL to `ALLOWED_ORIGINS` in `wrangler.toml`.
-3. Create the production admin user (a seed migration `0002_seed.sql` is planned).
+3. Confirm the admin email in `migrations/0002_seed.sql` before `migrations apply --remote`. After that, `0001` and `0002` must not be edited; schema or seed changes go into a new `0003_*.sql`.
+4. Use a new `JWT_SECRET` for production, different from `.dev.vars`.
+
+After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 
 ## Team and git workflow
 
@@ -353,7 +359,6 @@ Before the first deploy:
 
 ## Known gaps and next steps
 
-- No `0002_seed.sql` for the admin user yet.
 - R2 uploads (avatar, verification documents, chat attachments) are stubs that return `{ "uploadUrl": null, "key": null }` after validation; `documentUrl` in `GET /api/verifications` is `null`.
 - Payments are not implemented: confirming a booking needs no payment.
 - `/internal/*` endpoints from the service specs are not built.
