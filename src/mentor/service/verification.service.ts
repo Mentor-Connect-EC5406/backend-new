@@ -74,3 +74,6 @@ export async function review(
   });
   return toResponse((await repo.findById(db, id))!);
 }
+
+// R2 comes later
+export const uploadUrl = () => ({ uploadUrl: null, key: null });

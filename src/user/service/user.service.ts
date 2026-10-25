@@ -2,7 +2,7 @@ import type { CurrentUser } from "../../config/current-user";
 import { conflict, notFound } from "../../exception/api-error";
 import { type Page, toPage } from "../../util/pagination";
 import { nowIso } from "../../util/time";
-import type { ListUsersQuery, UpdateMeRequest, UserResponse } from "../dto/user.dto";
+import type { ListUsersQuery, UpdateMeRequest, UploadUrlResponse, UserResponse } from "../dto/user.dto";
 import type { UserRow } from "../entity/user.entity";
 import * as repo from "../repository/user.repository";
 
@@ -51,3 +51,6 @@ export async function updateStatus(
   await repo.updateStatus(db, id, status, nowIso());
   return toResponse(await getOrThrow(db, id));
 }
+
+// R2 comes later
+export const avatarUploadUrl = (): UploadUrlResponse => ({ uploadUrl: null, key: null });

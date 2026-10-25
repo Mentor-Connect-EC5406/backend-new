@@ -35,3 +35,35 @@ export type UserResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export const updateStudentProfileSchema = z.object({
+  university: z.string().max(200).optional(),
+  faculty: z.string().max(200).optional(),
+  degree: z.string().max(200).optional(),
+  academicYear: z.number().int("must be a whole number").min(1, "must be 1 to 10").max(10, "must be 1 to 10").optional(),
+  bio: z.string().max(2000).optional(),
+  interests: z.string().max(1000).optional(),
+});
+
+export const avatarUploadUrlSchema = z.object({
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"], {
+    error: "must be image/jpeg, image/png or image/webp",
+  }),
+});
+
+export type UpdateStudentProfileRequest = z.infer<typeof updateStudentProfileSchema>;
+
+export type StudentProfileResponse = {
+  id: string;
+  userId: string;
+  university: string | null;
+  faculty: string | null;
+  degree: string | null;
+  academicYear: number | null;
+  bio: string | null;
+  interests: string | null;
+  updatedAt: string;
+};
+
+// R2 comes later
+export type UploadUrlResponse = { uploadUrl: null; key: null };
