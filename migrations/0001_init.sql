@@ -1,13 +1,10 @@
 -- MentorConnect Edge API schema: all tables merged from docs/database/schema
 -- ids from other source services stay logical (no cross-service FK)
 
--- ===== user =====
--- user-service (user_service.db) Port 8081
--- Owns: users, student_profiles
-
+-- user
 CREATE TABLE users (
                        id                TEXT PRIMARY KEY CHECK (length(id) = 36),
-                       external_auth_id  TEXT NOT NULL UNIQUE,                 -- Asgardeo "sub" claim
+                       external_auth_id  TEXT NOT NULL UNIQUE,                 -- same value as id
                        email             TEXT NOT NULL UNIQUE COLLATE NOCASE,
                        password_hash     TEXT NOT NULL,
                        first_name        TEXT NOT NULL,
@@ -25,7 +22,7 @@ CREATE TABLE users (
 CREATE INDEX idx_users_role   ON users (role);
 CREATE INDEX idx_users_status ON users (account_status);
 
--- One profile per STUDENT user (users 1 : 0..1 student_profiles)
+-- one profile per STUDENT user
 CREATE TABLE student_profiles (
                                   id            TEXT PRIMARY KEY CHECK (length(id) = 36),
                                   user_id       TEXT NOT NULL UNIQUE
@@ -39,13 +36,10 @@ CREATE TABLE student_profiles (
                                   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
--- ===== mentor =====
--- mentor-service (mentor_service.db) Port 8082
--- Owns: mentors, expertise taxonomy, availability_slots, mentor_verifications
-
+-- mentor
 CREATE TABLE mentors (
                          id                  TEXT PRIMARY KEY CHECK (length(id) = 36),
-                         user_id             TEXT NOT NULL UNIQUE,               -- -> user-service.users.id (logical)
+                         user_id             TEXT NOT NULL UNIQUE,               -- users.id (logical)
                          title               TEXT,
                          organization        TEXT,
                          industry            TEXT,
@@ -65,7 +59,6 @@ CREATE INDEX idx_mentors_verification ON mentors (verification_status);
 CREATE INDEX idx_mentors_rating       ON mentors (rating_avg DESC);
 CREATE INDEX idx_mentors_industry     ON mentors (industry);
 
--- ---------- Expertise taxonomy ----------
 CREATE TABLE expertise_categories (
                                       id          TEXT PRIMARY KEY CHECK (length(id) = 36),
                                       name        TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -90,7 +83,6 @@ CREATE TABLE mentor_expertises (
 
 CREATE INDEX idx_mentor_expertises_expertise ON mentor_expertises (expertise_id);
 
--- ---------- Availability ----------
 CREATE TABLE availability_slots (
                                     id         TEXT PRIMARY KEY CHECK (length(id) = 36),
                                     mentor_id  TEXT NOT NULL REFERENCES mentors (id) ON DELETE CASCADE,
@@ -99,7 +91,7 @@ CREATE TABLE availability_slots (
                                     timezone   TEXT NOT NULL DEFAULT 'UTC',                 -- mentor display tz (IANA)
                                     status     TEXT NOT NULL DEFAULT 'AVAILABLE'
                                         CHECK (status IN ('AVAILABLE', 'HELD', 'BOOKED', 'BLOCKED')),
-                                    version    INTEGER NOT NULL DEFAULT 0,                  -- optimistic lock (@Version)
+                                    version    INTEGER NOT NULL DEFAULT 0,                  -- optimistic lock
                                     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                                     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                                     CHECK (end_time > start_time),
@@ -109,14 +101,13 @@ CREATE TABLE availability_slots (
 CREATE INDEX idx_slots_mentor_status_start ON availability_slots (mentor_id, status, start_time);
 CREATE INDEX idx_slots_status_start        ON availability_slots (status, start_time);
 
--- ---------- Verification ----------
 CREATE TABLE mentor_verifications (
                                       id            TEXT PRIMARY KEY CHECK (length(id) = 36),
                                       mentor_id     TEXT NOT NULL REFERENCES mentors (id) ON DELETE CASCADE,
                                       document_key  TEXT NOT NULL,                            -- Cloudflare R2 object key
                                       status        TEXT NOT NULL DEFAULT 'PENDING'
                                           CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
-                                      reviewed_by   TEXT,                                     -- -> user-service.users.id (admin)
+                                      reviewed_by   TEXT,                                     -- admin users.id (logical)
                                       review_note   TEXT,
                                       submitted_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                                       reviewed_at   TEXT
@@ -125,9 +116,7 @@ CREATE TABLE mentor_verifications (
 CREATE INDEX idx_verifications_mentor ON mentor_verifications (mentor_id);
 CREATE INDEX idx_verifications_status ON mentor_verifications (status);
 
--- ===== booking =====
-
--- student_id, mentor_id, slot_id point to other services (no FK)
+-- booking (student_id, mentor_id, slot_id are logical)
 CREATE TABLE bookings (
                           id                  TEXT PRIMARY KEY CHECK (length(id) = 36),
                           student_id          TEXT NOT NULL,
@@ -193,9 +182,7 @@ BEGIN
 SELECT RAISE(ABORT, 'Review allowed only for COMPLETED bookings');
 END;
 
--- ===== notification =====
-
--- user_id, sender_id point to the user service (no FK)
+-- notification (user_id, sender_id are logical)
 CREATE TABLE notifications (
                                id           TEXT PRIMARY KEY CHECK (length(id) = 36),
                                user_id      TEXT NOT NULL,
@@ -242,9 +229,7 @@ CREATE TABLE messages (
 
 CREATE INDEX idx_messages_conversation ON messages (conversation_id, sent_at);
 
--- ===== payment =====
-
--- booking_id, student_id point to other services (no FK)
+-- payment, later (booking_id, student_id are logical)
 CREATE TABLE payments (
                           id                   TEXT PRIMARY KEY CHECK (length(id) = 36),
                           booking_id           TEXT NOT NULL,
@@ -253,8 +238,7 @@ CREATE TABLE payments (
                           currency             TEXT NOT NULL DEFAULT 'USD',
                           provider             TEXT NOT NULL DEFAULT 'LEMON_SQUEEZY',
                           provider_checkout_id TEXT,
-    -- unique id blocks duplicate webhook deliveries
-                          transaction_id       TEXT UNIQUE,
+                          transaction_id       TEXT UNIQUE,                    -- blocks duplicate webhook deliveries
                           status               TEXT NOT NULL DEFAULT 'PENDING'
                               CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED')),
                           paid_at              TEXT,
@@ -280,9 +264,7 @@ CREATE TABLE refunds (
 
 CREATE INDEX idx_refunds_payment ON refunds (payment_id);
 
--- ===== mentorship =====
-
--- student_id, mentor_id point to other services (no FK)
+-- mentorship, later (student_id, mentor_id are logical)
 CREATE TABLE mentorship_programs (
                                      id              TEXT PRIMARY KEY CHECK (length(id) = 36),
                                      student_id      TEXT NOT NULL,
@@ -366,9 +348,7 @@ CREATE TABLE mentor_notes (
 CREATE INDEX idx_notes_student ON mentor_notes (student_id, visibility);
 CREATE INDEX idx_notes_program ON mentor_notes (program_id);
 
--- ===== analytic =====
-
--- user, booking and mentor ids point to other services (no FK)
+-- analytic, later (user, booking and mentor ids are logical)
 CREATE TABLE audit_logs (
                             id           TEXT PRIMARY KEY CHECK (length(id) = 36),
                             user_id      TEXT,
@@ -422,7 +402,7 @@ CREATE TABLE recommendations (
 
 CREATE INDEX idx_recommendations_student ON recommendations (student_id, score DESC);
 
--- one row per day, filled by DailyAnalyticsAggregationScheduler
+-- one row per day
 CREATE TABLE daily_stats (
                              stat_date          TEXT PRIMARY KEY,
                              new_users          INTEGER NOT NULL DEFAULT 0,
