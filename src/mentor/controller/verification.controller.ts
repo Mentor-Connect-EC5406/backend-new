@@ -29,3 +29,7 @@ verificationController.put("/api/verifications/:id", authenticate, requireRole("
   const body = await parseBody(c.req.raw, reviewVerificationSchema);
   return c.json(await service.review(c.env.DB, c.get("user"), c.req.param("id"), body));
 });
+
+verificationController.post("/api/mentors/me/verification-upload-url", authenticate, requireRole("MENTOR"), async (c) => {
+  return c.json(service.uploadUrl());
+});

@@ -20,6 +20,9 @@ Known gaps:
 | user | PUT | /api/users/me | ✅ | ✅ |
 | user | GET | /api/users | ✅ | ✅ |
 | user | PUT | /api/users/{id}/status | ✅ | ✅ |
+| user | POST | /api/users/me/avatar-upload-url | ✅ | ✅ |
+| user | GET | /api/students/me/profile | ✅ | ✅ |
+| user | PUT | /api/students/me/profile | ✅ | ✅ |
 | mentor | GET | /api/mentors/me | ✅ | ✅ |
 | mentor | PUT | /api/mentors/me | ✅ | ✅ |
 | mentor | GET | /api/mentors | ✅ | ✅ |
@@ -37,6 +40,7 @@ Known gaps:
 | mentor | GET | /api/mentors/me/verifications | ✅ | ✅ |
 | mentor | GET | /api/verifications | ✅ | ✅ |
 | mentor | PUT | /api/verifications/{id} | ✅ | ✅ |
+| mentor | POST | /api/mentors/me/verification-upload-url | ✅ | ✅ |
 | booking | POST | /api/bookings | ✅ | ✅ |
 | booking | GET | /api/bookings | ✅ | ✅ |
 | booking | GET | /api/bookings/{id} | ✅ | ✅ |
