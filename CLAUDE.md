@@ -1,15 +1,83 @@
-Read CLAUDE.md, docs/api/*.md and docs/database/schema/*.sql first. Then build the complete MentorConnect Edge API (Cloudflare Worker + Hono + TypeScript + D1) end to end, in this order, finishing and verifying each step before the next:
+# MentorConnect Edge API
 
-1. Project setup: package.json (scripts: dev, deploy), wrangler.toml (name mentorconnect-api, main src/index.ts, a D1 binding named DB for database "mentorconnect-db", cron trigger every minute), tsconfig, .gitignore (node_modules, .wrangler, .dev.vars), the full folder structure from CLAUDE.md, src/index.ts with /api/health. Install hono, zod, wrangler, typescript, @cloudflare/workers-types.
-2. migrations/0001_init.sql: ONE file with ALL tables merged from every schema file in docs/database/schema (users with an added password_hash column, student_profiles, mentors and all mentor tables, slots, verifications, bookings, mentoring_sessions, reviews, notifications and conversation tables), keeping the CHECK constraints, indexes, the partial unique index uq_bookings_active_slot and the trigger trg_reviews_require_completed. Apply it to the local D1 with wrangler d1 migrations apply --local.
-3. Shared code: config (Env type, JWT auth middleware, CurrentUser, requireRole), exception (ApiError factories, global error handler and 404 handler with the exact error JSON shape), util (time, uuid, PBKDF2 password hash, pagination).
-4. auth: POST /api/auth/register and POST /api/auth/login (JWT HS256, JWT_SECRET from env; use .dev.vars for local, do not commit it).
-5. user module: all endpoints in docs/api/03.md that apply, plus admin GET /api/users (filters role, accountStatus, q, page, size) and PUT /api/users/{id}/status (admin cannot suspend self: 409).
-6. mentor module: every endpoint in docs/api/04.md (mentor profile, search with filters, expertise categories and expertises, mentor expertises, availability slots, verifications and admin review). Document upload URLs return null for now.
-7. booking module: every endpoint in docs/api/05.md (create with slot HOLD, list, get, cancel, session get/start/complete, reviews with mentor rating update). Replace the internal confirm with POST /api/bookings/{id}/confirm (student of the booking, no real payment). Add the scheduled handler (cron) that cancels expired PENDING bookings and frees the slot.
-8. notification module: endpoints from docs/api/07.md for notifications (list, read, read-all) and conversations/messages, plus an internal helper function (not an HTTP endpoint) other modules call to create notifications; create a notification on booking created, confirmed and cancelled.
-9. CORS middleware (allowed origins from an env var, default allow all in dev), mount all routes in src/index.ts.
+## Project
+- Sprint 2 backend: one Cloudflare Worker (Hono + TypeScript) with Cloudflare D1 (SQLite), managed with Wrangler
+- Worker name `mentorconnect-api`, entry `src/index.ts`, D1 binding `DB` for database `mentorconnect-db`
+- The long-term target is the Spring Boot microservices repo (github.com/ravinduanushka/backend). Modules here mirror those services so the code can be moved later
+- The React frontend (Netlify) is built by two other teammates and calls this API. Do not change paths or JSON shapes without telling them
+- Developers: Ravindu (ravinduanushka), Dasuni (dasunisenanayake25). Branch `dev`
 
-Rules: follow CLAUDE.md strictly (response shapes, error format, pagination, business rules, short single-line comments only). After each step run npx tsc --noEmit and, from step 3 on, start npm run dev and test the new endpoints with curl; fix problems before moving on. At the end create docs/api/postman/edge-api/mentorconnect-edge-api.postman_collection.json (Postman v2.1, collection variables baseUrl and token, a login request that stores the token, and one request per endpoint) and docs/api/API-CHECKS.md with every endpoint listed as "built" (never mark tested). Do NOT run any git command, wrangler login, wrangler deploy or wrangler d1 create. When you need the real D1 database id or a login, stop and tell me exactly which command I must run. Finish with: the list of endpoints built, what I must run manually (d1 create, set JWT_SECRET, login, deploy) and one short commit message per step.
+## Sprint 2 scope
+- In: auth, user, mentor, booking, notification (incl. conversations and messages), admin user management and verification review
+- Out (later): payments and Lemon Squeezy, R2 uploads (upload-url endpoints return `{ "uploadUrl": null, "key": null }`), real email, analytics, mentorship programs
 
-- API docs files: docs/api/00-conventions.md, 03-user-service.md, 04-mentor-service.md, 05-booking-service.md, 06-payment-service.md (later), 07-secondary-apis.md (notifications, chat, admin users). DB: docs/database/*.sql and er-diagram.md.
+## Folder structure
+src/
+- index.ts: app, CORS, error handlers, route mounting, scheduled (cron) handler
+- config/: Env type, JWT auth middleware, CurrentUser, requireRole
+- exception/: ApiError factories, global error handler, 404 handler
+- util/: time, uuid, password hash, pagination
+- auth/, user/, mentor/, booking/, notification/: each has controller/, service/, repository/, entity/, dto/
+migrations/: 0001_init.sql (schema), 0002_seed.sql (admin user)
+docs/api/: API specs, API-CHECKS.md, postman/edge-api/
+docs/database/schema/: source schemas from the Spring repo
+
+## Layers
+- controller: Hono routes, zod validation of body and query, calls service, returns response
+- service: business rules, role and ownership checks, throws ApiError
+- repository: D1 SQL only. Always prepared statements with bind(), never string concatenation
+- entity: row types (snake_case, as in the table). dto: request and response types (camelCase)
+- A module may read another module's tables with SQL. Writes to another module's tables are allowed only where a rule below says so
+
+## Owners
+- Ravindu: package.json, wrangler.toml, tsconfig.json, .gitignore, src/index.ts, src/config, src/exception, src/util, src/auth, src/user, src/mentor, docs/api/API-CHECKS.md, docs/api/postman
+- Dasuni: migrations/, src/booking, src/notification, the real D1 database_id in wrangler.toml, deploy
+- Never edit another owner's files unless the developer asks
+
+## API rules
+- Follow docs/api/*.md (paths, JSON, status codes) and docs/database/schema/*.sql exactly. If a task conflicts with them, ask first. Never edit docs/api or docs/database unless asked
+- Error JSON: { timestamp, status, error, message, path } plus fieldErrors [{ field, message }] for 400 validation. Unknown route gives 404 in the same shape
+- Status codes: 200 read or update, 201 create, 204 no body, 400 invalid, 401 no or bad token, 403 wrong role or not ACTIVE, 404 not found, 409 conflict
+- Pagination: page from 0, size default 20 max 100. Response { content, page, size, totalElements, totalPages }
+- Ids UUID TEXT. Timestamps UTC ISO-8601 TEXT with milliseconds (2026-11-01T10:00:00.000Z). Money in cents. Enums uppercase TEXT
+
+## Auth
+- POST /api/auth/register (roles STUDENT or MENTOR only) and POST /api/auth/login return a JWT
+- JWT HS256 with JWT_SECRET, claims sub (user id), email, role, exp (24 h). Header: Authorization: Bearer <token>
+- Passwords: PBKDF2-SHA256 with Web Crypto, random salt per user, 100000 iterations (Workers maximum), stored as pbkdf2$iterations$salt$hash
+- A SUSPENDED account gets 403 on login and on every protected route
+- ADMIN accounts come only from migrations/0002_seed.sql
+
+## Business rules
+- Roles: STUDENT, MENTOR, ADMIN
+- Double booking: unique index uq_bookings_active_slot and slot status. Create the booking and set the slot to HOLD in one db.batch()
+- The booking module may update availability_slots.status (HOLD, BOOKED, AVAILABLE)
+- POST /api/bookings/{id}/confirm: only the student of the booking, no real payment. Booking CONFIRMED, slot BOOKED
+- Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
+- Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed). Update the mentor rating after a review
+- Notifications: other modules call the notification service function (no HTTP). Create one on booking created, confirmed and cancelled
+- Admin cannot suspend their own account (409)
+
+## Config and secrets
+- Non-secret settings in wrangler.toml [vars], for example ALLOWED_ORIGINS (comma-separated, Netlify URL and http://localhost:5173)
+- Secrets: JWT_SECRET only through .dev.vars (local) and wrangler secret put (deploy). Never in code, docs, Postman files or git
+
+## Workflow for Claude Code
+- One task at a time. After each task: npx tsc --noEmit, npm run dev, test with curl, then stop and list the Postman requests (method, URL, headers, body, expected status for success, 400, 401/403, 404/409)
+- After building an endpoint, set Built to ✅ in docs/api/API-CHECKS.md. Never mark the test columns. The developer does that after Postman
+- Postman collection: docs/api/postman/edge-api/mentorconnect-edge-api.postman_collection.json (v2.1, variables baseUrl and token)
+- Never run git, wrangler login, wrangler deploy, wrangler d1 create or any command with --remote. Tell the developer the exact command instead
+- Do not add features, endpoints or libraries the task did not ask for
+- Comments: short, single line, only where needed. No banner comments
+- Explain to the developer in Sinhala. Keep code, commands and identifiers in English
+
+## Commands
+- npm run dev (local Worker on http://localhost:8787)
+- npx wrangler d1 migrations apply mentorconnect-db --local
+- npx tsc --noEmit
+- Developer only: npx wrangler login, npx wrangler d1 create mentorconnect-db, npx wrangler secret put JWT_SECRET, npx wrangler d1 migrations apply mentorconnect-db --remote, npm run deploy
+
+## Git (developers, by hand)
+- Branch feature/<name> from dev, PR into dev, merge after review
+- Commit messages: one line, "feat: ...", "fix: ...", "chore: ...", "docs: ...". No AI co-author lines
+- Backlog tickets describe features, not Worker or D1 workarounds
