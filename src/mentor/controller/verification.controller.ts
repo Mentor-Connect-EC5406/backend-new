@@ -6,6 +6,7 @@ import {
   listVerificationsQuerySchema,
   reviewVerificationSchema,
   submitVerificationSchema,
+  verificationUploadUrlSchema,
 } from "../dto/mentor.dto";
 import * as service from "../service/verification.service";
 
@@ -31,5 +32,6 @@ verificationController.put("/api/verifications/:id", authenticate, requireRole("
 });
 
 verificationController.post("/api/mentors/me/verification-upload-url", authenticate, requireRole("MENTOR"), async (c) => {
-  return c.json(service.uploadUrl());
+  await parseBody(c.req.raw, verificationUploadUrlSchema);
+  return c.json(await service.uploadUrl(c.env.DB, c.get("user")));
 });
