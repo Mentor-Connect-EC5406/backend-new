@@ -1,0 +1,2830 @@
+{
+  "info": {
+    "_postman_id": "4631b7dd-a9d2-4315-bffe-084d8775f980",
+    "name": "MentorConnect Edge API - auth, user, mentor",
+    "description": "FIRST TIME ONLY: send A1 alone, then run in a terminal:\nnpx wrangler d1 execute mentorconnect-db --local --command \"UPDATE users SET role='ADMIN' WHERE email='admin@x.com'\"\nThen run the whole collection (Runner). Set baseUrl to the port printed by npm run dev.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "55546837",
+    "_collection_link": "https://go.postman.co/collection/55546837-4631b7dd-a9d2-4315-bffe-084d8775f980?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "A. Auth and setup",
+      "item": [
+        {
+          "name": "A1 register admin (201 or 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201/409', function () { pm.expect([201, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"admin@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Admin\",\"lastName\":\"User\",\"phone\":\"+94771234567\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A2 login admin (200) - run AFTER the SQL step",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('adminToken', j.token);pm.collectionVariables.set('adminId', j.user.id);pm.test('role is ADMIN', function () { pm.expect(j.user.role).to.eql('ADMIN'); }); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"admin@x.com\",\"password\":\"Passw0rd!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A3 register mentor (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('runId', Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('mentorToken', j.token);pm.collectionVariables.set('mentorUserId', j.user.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"mentor{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"MENTOR\",\"firstName\":\"Nimal\",\"lastName\":\"Silva\",\"phone\":\"+94771234567\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A4 register student (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('studentToken', j.token);pm.collectionVariables.set('studentId', j.user.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Kamal\",\"lastName\":\"Perera\",\"phone\":\"+94771234567\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A5 register duplicate email (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Kamal\",\"lastName\":\"Perera\",\"phone\":\"+94771234567\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A6 register role ADMIN (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"bad{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"ADMIN\",\"firstName\":\"Bad\",\"lastName\":\"Role\",\"phone\":\"+94771234567\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A7 login wrong password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.expect([401]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"WrongPass1\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A8 login student (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('studentToken', j.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"Passw0rd!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Users",
+      "item": [
+        {
+          "name": "1.1 GET me student (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 GET me no token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.expect([401]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 PUT me (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstName\":\"Kamal\",\"lastName\":\"P\",\"phone\":\"+94771234567\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 PUT me empty firstName (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"firstName\":\"\",\"lastName\":\"P\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.5 GET users admin (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?role=MENTOR&accountStatus=ACTIVE&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "MENTOR"
+                },
+                {
+                  "key": "accountStatus",
+                  "value": "ACTIVE"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.6 GET users as student (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.7 GET users size=500 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?size=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "500"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.8 PUT status self (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountStatus\":\"SUSPENDED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{adminId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{adminId}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.9 PUT status unknown id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountStatus\":\"SUSPENDED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/11111111-1111-4111-8111-111111111111/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "11111111-1111-4111-8111-111111111111",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.10 suspend student (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountStatus\":\"SUSPENDED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{studentId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{studentId}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.11 suspended student GET me (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.12 activate student (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountStatus\":\"ACTIVE\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{studentId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{studentId}}",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "1.13 student GET me again (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Expertise",
+      "item": [
+        {
+          "name": "2.1 POST category (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('categoryId', j.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Programming {{runId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 POST category duplicate (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Programming {{runId}}\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 POST category as mentor (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Nope\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 GET categories (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.5 POST expertise Java (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('expertiseId', j.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Java\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories/{{categoryId}}/expertises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories",
+                "{{categoryId}}",
+                "expertises"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.6 POST expertise duplicate (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Java\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories/{{categoryId}}/expertises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories",
+                "{{categoryId}}",
+                "expertises"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2.7 POST expertise unknown category (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Java\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/expertise-categories/11111111-1111-4111-8111-111111111111/expertises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expertise-categories",
+                "11111111-1111-4111-8111-111111111111",
+                "expertises"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Mentor profile",
+      "item": [
+        {
+          "name": "3.1 GET mentors/me before profile (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 PUT mentors/me create (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('mentorId', j.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 PUT mentors/me update (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 PUT mentors/me experienceYears -1 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":-1,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.5 PUT mentors/me as student (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.6 GET mentors/me (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.7 PUT my expertises (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"expertises\":[{\"expertiseId\":\"{{expertiseId}}\",\"proficiency\":\"EXPERT\"}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/expertises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "expertises"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3.8 PUT my expertises unknown id (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"expertises\":[{\"expertiseId\":\"11111111-1111-4111-8111-111111111111\",\"proficiency\":\"EXPERT\"}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/expertises",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "expertises"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Slots",
+      "item": [
+        {
+          "name": "4.1 POST slot (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const st = new Date(Date.now() + 3*24*60*60*1000); st.setMinutes(0,0,0); const en = new Date(st.getTime() + 60*60*1000); pm.collectionVariables.set('sStart', st.toISOString()); pm.collectionVariables.set('sEnd', en.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('slotId', j.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"{{sStart}}\",\"endTime\":\"{{sEnd}}\",\"timezone\":\"Asia/Colombo\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 POST slot same start (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"{{sStart}}\",\"endTime\":\"{{sEnd}}\",\"timezone\":\"Asia/Colombo\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 POST slot in the past (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"2020-01-01T09:00:00.000Z\",\"endTime\":\"2020-01-01T10:00:00.000Z\",\"timezone\":\"Asia/Colombo\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.4 GET my slots (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots?status=AVAILABLE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "AVAILABLE"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.5 PUT slot BLOCKED (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"{{sStart}}\",\"endTime\":\"{{sEnd}}\",\"status\":\"BLOCKED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots/{{slotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots",
+                "{{slotId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.6 PUT slot status BOOKED (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"{{sStart}}\",\"endTime\":\"{{sEnd}}\",\"status\":\"BOOKED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots/{{slotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots",
+                "{{slotId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.7 PUT slot AVAILABLE (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"{{sStart}}\",\"endTime\":\"{{sEnd}}\",\"status\":\"AVAILABLE\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots/{{slotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots",
+                "{{slotId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.8 POST slot 2 (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const st = new Date(Date.now() + 4*24*60*60*1000); st.setMinutes(0,0,0); const en = new Date(st.getTime() + 60*60*1000); pm.collectionVariables.set('s2Start', st.toISOString()); pm.collectionVariables.set('s2End', en.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('slot2Id', j.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"startTime\":\"{{s2Start}}\",\"endTime\":\"{{s2End}}\",\"timezone\":\"Asia/Colombo\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.9 DELETE slot 2 (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', function () { pm.expect([204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots/{{slot2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots",
+                "{{slot2Id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.10 DELETE slot 2 again (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/slots/{{slot2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "slots",
+                "{{slot2Id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.11 GET public slots, mentor NOT approved yet (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/{{mentorId}}/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "{{mentorId}}",
+                "slots"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Verification",
+      "item": [
+        {
+          "name": "5.1 POST verification (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('verificationId', j.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentKey\":\"verifications/{{mentorId}}/a.pdf\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.2 POST verification while PENDING (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentKey\":\"verifications/{{mentorId}}/b.pdf\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.3 POST verification wrong key prefix (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentKey\":\"wrong/a.pdf\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.4 GET my verifications (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.5 GET verifications admin (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/verifications?status=PENDING&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "verifications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.6 GET verifications as mentor (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/verifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "verifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.7 review REJECTED without note (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"REJECTED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verifications/{{verificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "verifications",
+                "{{verificationId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.8 review APPROVED (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"APPROVED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verifications/{{verificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "verifications",
+                "{{verificationId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.9 review again (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', function () { pm.expect([409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"APPROVED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verifications/{{verificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "verifications",
+                "{{verificationId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5.10 review unknown id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"APPROVED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/verifications/11111111-1111-4111-8111-111111111111",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "verifications",
+                "11111111-1111-4111-8111-111111111111"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Search and public",
+      "item": [
+        {
+          "name": "6.1 search q=WSO2 as student (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.test('mentor is in the list', function () { pm.expect(JSON.stringify(j)).to.include(pm.collectionVariables.get('mentorId')); }); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors?q=WSO2&industry=Software&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "WSO2"
+                },
+                {
+                  "key": "industry",
+                  "value": "Software"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6.2 search minRating=9 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors?minRating=9",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors"
+              ],
+              "query": [
+                {
+                  "key": "minRating",
+                  "value": "9"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6.3 search as mentor (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6.4 GET mentor by id (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/{{mentorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "{{mentorId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6.5 GET unknown mentor (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/11111111-1111-4111-8111-111111111111",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "11111111-1111-4111-8111-111111111111"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6.6 GET public slots, now approved (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('from', new Date().toISOString()); pm.collectionVariables.set('to', new Date(Date.now()+10*24*60*60*1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/{{mentorId}}/slots?from={{from}}&to={{to}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "{{mentorId}}",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6.7 GET public slots range over 31 days (400)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('to60', new Date(Date.now()+60*24*60*60*1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', function () { pm.expect([400]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{studentToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/{{mentorId}}/slots?from={{from}}&to={{to60}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "{{mentorId}}",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{from}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{to60}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "secret": true
+    },
+    {
+      "key": "adminId",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "mentorToken",
+      "secret": true
+    },
+    {
+      "key": "mentorUserId",
+      "value": ""
+    },
+    {
+      "key": "studentToken",
+      "secret": true
+    },
+    {
+      "key": "studentId",
+      "value": ""
+    },
+    {
+      "key": "sStart",
+      "value": ""
+    },
+    {
+      "key": "sEnd",
+      "value": ""
+    },
+    {
+      "key": "s2Start",
+      "value": ""
+    },
+    {
+      "key": "s2End",
+      "value": ""
+    },
+    {
+      "key": "from",
+      "value": ""
+    },
+    {
+      "key": "to",
+      "value": ""
+    },
+    {
+      "key": "to60",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "expertiseId",
+      "value": ""
+    },
+    {
+      "key": "mentorId",
+      "value": ""
+    },
+    {
+      "key": "slotId",
+      "value": ""
+    },
+    {
+      "key": "slot2Id",
+      "value": ""
+    },
+    {
+      "key": "verificationId",
+      "value": ""
+    }
+  ]
+}
