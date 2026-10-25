@@ -3287,7 +3287,7 @@
           "response": []
         },
         {
-          "name": "7.13 POST verification-upload-url (200)",
+          "name": "7.13 POST verification-upload-url application/pdf (200)",
           "event": [
             {
               "listen": "test",
@@ -3430,6 +3430,254 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "7.16 POST verification-upload-url image/png (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
+                  "var j = pm.response.json();",
+                  "pm.test(\"uploadUrl and key are null\", function () { pm.expect(j.uploadUrl).to.equal(null); pm.expect(j.key).to.equal(null); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"image/png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verification-upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verification-upload-url"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7.17 POST verification-upload-url image/gif (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () { pm.expect([400]).to.include(pm.response.code); });",
+                  "var j = pm.response.json();",
+                  "pm.test(\"fieldErrors has contentType\", function () { pm.expect(j.fieldErrors.map(function (e) { return e.field; })).to.include(\"contentType\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"image/gif\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verification-upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verification-upload-url"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7.18 POST verification-upload-url missing contentType (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () { pm.expect([400]).to.include(pm.response.code); });",
+                  "var j = pm.response.json();",
+                  "pm.test(\"fieldErrors has contentType\", function () { pm.expect(j.fieldErrors.map(function (e) { return e.field; })).to.include(\"contentType\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verification-upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verification-upload-url"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7.19 register mentor without profile (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", function () { pm.expect([201]).to.include(pm.response.code); });",
+                  "var j = pm.response.json();",
+                  "pm.collectionVariables.set(\"mentorNoProfileToken\", j.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"noprofile{{runId}}@x.com\",\n  \"password\": \"Passw0rd!\",\n  \"role\": \"MENTOR\",\n  \"firstName\": \"No\",\n  \"lastName\": \"Profile\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7.20 POST verification-upload-url mentor without profile (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mentorNoProfileToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"application/pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verification-upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verification-upload-url"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -3529,6 +3777,10 @@
     {
       "key": "verificationId",
       "value": ""
+    },
+    {
+      "key": "mentorNoProfileToken",
+      "secret": true
     }
   ]
 }

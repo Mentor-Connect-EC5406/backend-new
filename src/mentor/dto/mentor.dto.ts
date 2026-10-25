@@ -190,3 +190,9 @@ export type VerificationResponse = {
 };
 
 export type AdminVerificationResponse = VerificationResponse & { documentUrl: string | null };
+
+export const verificationUploadUrlSchema = z.object({
+  contentType: z.enum(["application/pdf", "image/jpeg", "image/png"], {
+    error: "must be application/pdf, image/jpeg or image/png",
+  }),
+});

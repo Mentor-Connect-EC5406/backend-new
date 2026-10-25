@@ -250,7 +250,7 @@ Status of every endpoint is tracked in `docs/api/API-CHECKS.md`. "Any" means any
 | PUT | `/api/mentors/me/slots/{slotId}` | Mentor (only AVAILABLE or BLOCKED slots) |
 | DELETE | `/api/mentors/me/slots/{slotId}` | Mentor (409 if HELD or BOOKED) |
 | GET | `/api/mentors/{id}/slots` | Student (AVAILABLE future slots, range up to 31 days) |
-| POST | `/api/mentors/me/verification-upload-url` | Mentor (stub) |
+| POST | `/api/mentors/me/verification-upload-url` | Mentor (stub; body `contentType` application/pdf, image/jpeg or image/png, else 400; 404 if the mentor has no profile) |
 | POST | `/api/mentors/me/verifications` | Mentor (`documentKey` must start with `verifications/{mentorId}/`) |
 | GET | `/api/mentors/me/verifications` | Mentor |
 | GET | `/api/verifications` | Admin (`status`, `page`, `size`) |
@@ -354,7 +354,7 @@ Before the first deploy:
 ## Known gaps and next steps
 
 - No `0002_seed.sql` for the admin user yet.
-- R2 uploads (avatar, verification documents, chat attachments) are stubs; `documentUrl` in `GET /api/verifications` is `null`.
+- R2 uploads (avatar, verification documents, chat attachments) are stubs that return `{ "uploadUrl": null, "key": null }` after validation; `documentUrl` in `GET /api/verifications` is `null`.
 - Payments are not implemented: confirming a booking needs no payment.
 - `/internal/*` endpoints from the service specs are not built.
 - Not yet covered by Postman: `/api/health`, session start (success case), session complete, reviews. Reviews cannot be reached in the flow because a review needs a COMPLETED booking and a session can only start 15 minutes before its slot.

@@ -75,5 +75,8 @@ export async function review(
   return toResponse((await repo.findById(db, id))!);
 }
 
-// R2 comes later
-export const uploadUrl = () => ({ uploadUrl: null, key: null });
+// R2 comes later, the mentor profile must exist
+export async function uploadUrl(db: D1Database, me: CurrentUser) {
+  await requireMentor(db, me.id);
+  return { uploadUrl: null, key: null };
+}
