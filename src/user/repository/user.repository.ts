@@ -24,13 +24,13 @@ export type NewRegisteredUser = {
   now: string;
 };
 
-// Asgardeo users have no password_hash; a STUDENT also gets an empty profile
+// a STUDENT also gets an empty profile
 export async function insertRegistered(db: D1Database, u: NewRegisteredUser, profileId: string | null) {
   const stmts = [
     db
       .prepare(
-        `INSERT INTO users (id, external_auth_id, email, password_hash, first_name, last_name, phone, role, account_status, created_at, updated_at)
-         VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
+        `INSERT INTO users (id, external_auth_id, email, first_name, last_name, phone, role, account_status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)`,
       )
       .bind(u.id, u.externalAuthId, u.email, u.firstName, u.lastName, u.phone, u.role, u.now, u.now),
   ];

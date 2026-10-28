@@ -7,7 +7,6 @@ ALLOWED_ORIGINS = "http://localhost:5173"
 ASGARDEO_ISSUER = "https://api.asgardeo.io/t/teamcylix/oauth2/token"
 ASGARDEO_JWKS_URL = "https://api.asgardeo.io/t/teamcylix/oauth2/jwks"
 ASGARDEO_CLIENT_ID = "m3dJhyb5oENx63qGPUVa9LrMpeQa"
-PASSWORD_LOGIN = "false"
 R2_ACCOUNT_ID = "2c97727756cee0364a289ef16242b565"
 R2_BUCKET = "mentorconnect-files"
 

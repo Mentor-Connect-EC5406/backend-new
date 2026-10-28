@@ -3,8 +3,10 @@
 Built: the route exists in the Worker. Tested: passed in Postman.
 
 Collections in `docs/api/postman/edge-api/`:
-- `mentorconnect-edge-api.postman_collection.json`: auth, user and mentor endpoints
-- `mentorconnect-edge-api-flow.postman_collection.json`: end-to-end flow (54 requests, 104 assertions passed) covering auth, mentor, booking, notification and conversation endpoints
+Login is Asgardeo only; every collection uses Asgardeo access tokens (see README, Testing with Postman).
+
+- `mentorconnect-edge-api.postman_collection.json`: register, user and mentor endpoints
+- `mentorconnect-edge-api-flow.postman_collection.json`: end-to-end flow covering register, mentor, booking, notification and conversation endpoints
 - `mentorconnect-edge-api-asgardeo.postman_collection.json`: real Asgardeo login (OAuth 2.0 PKCE, run by hand), covers `POST /api/users/register`
 
 Known gaps:
@@ -15,8 +17,6 @@ Known gaps:
 | Service | Method | Path | Built | Tested |
 |---|---|---|---|---|
 | health | GET | /api/health | ✅ | ⬜ |
-| auth | POST | /api/auth/register | ✅ | ✅ |
-| auth | POST | /api/auth/login | ✅ | ✅ |
 | user | POST | /api/users/register | ✅ | ⬜ |
 | user | GET | /api/users/me | ✅ | ✅ |
 | user | PUT | /api/users/me | ✅ | ✅ |

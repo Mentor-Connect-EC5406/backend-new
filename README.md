@@ -1,6 +1,6 @@
 # MentorConnect Edge API
 
-Sprint 2 backend for MentorConnect: one Cloudflare Worker (Hono + TypeScript) with a Cloudflare D1 (SQLite) database, managed with Wrangler. The React frontend (Netlify) calls this API.
+Sprint 2 backend for MentorConnect: one Cloudflare Worker (Hono + TypeScript) with a Cloudflare D1 (SQLite) database, managed with Wrangler. The React frontend (Cloudflare Pages) calls this API. Login is Asgardeo only.
 
 The long-term target is the Spring Boot microservices repo (github.com/ravinduanushka/backend). The modules here mirror those services so the code can be moved later.
 
@@ -31,7 +31,8 @@ The long-term target is the Spring Boot microservices repo (github.com/ravinduan
 | Validation | zod 4 |
 | Database | Cloudflare D1 (SQLite), binding `DB`, database `mentorconnect-db` |
 | Tooling | Wrangler 4 |
-| Auth | Asgardeo (OIDC, RS256 access tokens checked with JWKS via Web Crypto); local-only password login with JWT HS256 and PBKDF2-SHA256 |
+| Auth | Asgardeo only (OIDC, RS256 access tokens checked with the JWKS via Web Crypto) |
+| Files | Cloudflare R2 (S3 API presigned URLs, SigV4 via Web Crypto) |
 
 Worker name `mentorconnect-api`, entry `src/index.ts`.
 
@@ -57,7 +58,7 @@ backend-new/
 ├── .dev.vars                  local secrets (git ignored)
 ├── migrations/
 │   ├── 0001_init.sql          full schema, all tables
-│   └── 0002_seed.sql          admin user (password hash only)
+│   └── 0002_seed.sql          admin user (Asgardeo User ID and email)
 ├── scripts/
 │   └── make-admin-seed.mjs    writes 0002_seed.sql (asks for the admin's Asgardeo User ID)
 ├── docs/
@@ -65,10 +66,9 @@ backend-new/
 │   └── database/              ER diagram and source schemas
 └── src/
     ├── index.ts               app, CORS, health, route mounting, error handlers, cron handler
-    ├── config/                Env type, Asgardeo and local JWT checks, auth middleware, CurrentUser, requireRole
+    ├── config/                Env type, Asgardeo token check, auth middleware, CurrentUser, requireRole
     ├── exception/             ApiError factories, error handler, 404 handler
-    ├── util/                  time, uuid, password hash, pagination, zod parse helpers, R2 presign
-    ├── auth/                  local-only password register and login
+    ├── util/                  time, uuid, pagination, zod parse helpers, R2 presign
     ├── user/                  register after Asgardeo login, me, admin user management, student profile
     ├── mentor/                profile, search, expertise, slots, verification
     ├── booking/               bookings, sessions, reviews, expiry cron
@@ -99,14 +99,12 @@ npm install
 Create `.dev.vars` in the project root (it is git ignored):
 
 ```
-JWT_SECRET=use-a-long-random-string-here
-PASSWORD_LOGIN=true
 R2_ACCESS_KEY_ID=your-r2-access-key-id
 R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 R2_BUCKET=mentorconnect-files-dev
 ```
 
-Paste the R2 values without quotes or `< >`. Values here override `wrangler.toml`: `PASSWORD_LOGIN=true` turns on the local password login, and `R2_BUCKET` sends local uploads to the dev bucket.
+Paste the R2 values without quotes or `< >`. Values here override `wrangler.toml`, so `R2_BUCKET` sends local uploads to the dev bucket. Login uses the real Asgardeo also when the Worker runs locally.
 
 After pulling a change to `migrations/0001_init.sql`, reset the local database (local test data only):
 
@@ -134,15 +132,18 @@ Type check:
 npx tsc --noEmit
 ```
 
-### Create a local admin user
+### The admin user
 
-ADMIN accounts cannot be registered through the API. `migrations/0002_seed.sql` creates one ADMIN user when the migrations are applied. It holds only the PBKDF2 hash of the local test password, so ask the developer who generated it for the password (never share it in git or chat). Generate it again with `node scripts/make-admin-seed.mjs`; give the admin's Asgardeo User ID so the same account can also log in through Asgardeo.
+ADMIN accounts cannot be registered through the API. `migrations/0002_seed.sql` creates one ADMIN user when the migrations are applied. Its `id` and `external_auth_id` are the admin's Asgardeo User ID, so the admin logs in through Asgardeo like everyone else.
 
-For local testing you can also promote a registered test user:
+1. Create the admin user in the Asgardeo console (User Management > Users).
+2. Copy its User ID, then run `node scripts/make-admin-seed.mjs` and give the email and that User ID.
+3. Reset the local database (above) so the new seed is applied.
+
+For local testing you can also promote a registered Asgardeo test user:
 
 ```bash
-curl -X POST http://localhost:8787/api/auth/register -H "Content-Type: application/json" -d "{\"email\":\"admin@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Admin\",\"lastName\":\"X\"}"
-npx wrangler d1 execute mentorconnect-db --local --command "UPDATE users SET role='ADMIN' WHERE email='admin@x.com'"
+npx wrangler d1 execute mentorconnect-db --local --command "UPDATE users SET role='ADMIN' WHERE email='you@example.com'"
 ```
 
 The role is read from the database on every request, so the next request already has the ADMIN role.
@@ -151,12 +152,10 @@ The role is read from the database on every request, so the next request already
 
 | Name | Where | Purpose |
 |---|---|---|
-| `ALLOWED_ORIGINS` | `wrangler.toml` `[vars]` | comma-separated CORS origins, for example `http://localhost:5173,https://your-site.netlify.app`. Default `http://localhost:5173` |
+| `ALLOWED_ORIGINS` | `wrangler.toml` `[vars]` | comma-separated CORS origins, for example `http://localhost:5173,https://mentorconnect.pages.dev`. Default `http://localhost:5173` |
 | `ASGARDEO_ISSUER` | `wrangler.toml` `[vars]` | `https://api.asgardeo.io/t/teamcylix/oauth2/token`, must equal the token `iss` |
 | `ASGARDEO_JWKS_URL` | `wrangler.toml` `[vars]` | `https://api.asgardeo.io/t/teamcylix/oauth2/jwks`, public keys for the token signature |
 | `ASGARDEO_CLIENT_ID` | `wrangler.toml` `[vars]` | the MentorConnect application client id, must be in the token `aud` |
-| `PASSWORD_LOGIN` | `wrangler.toml` `[vars]` (`"false"`), `.dev.vars` (`true`) | turns on `/api/auth/*` and HS256 tokens. Keep it off in production |
-| `JWT_SECRET` | `.dev.vars` only | HS256 signing key for the local password login. Never put it in code, docs, Postman files or git |
 | `DB` | `wrangler.toml` `[[d1_databases]]` | D1 binding. `database_id` must be the real id from `d1 create` |
 | `R2_ACCOUNT_ID` | `wrangler.toml` `[vars]` | Cloudflare account id, used for the R2 S3 endpoint |
 | `R2_BUCKET` | `wrangler.toml` `[vars]` (`mentorconnect-files`), `.dev.vars` (`mentorconnect-files-dev`) | bucket for uploads |
@@ -181,7 +180,7 @@ Main tables used now:
 
 | Module | Tables |
 |---|---|
-| user | `users` (`external_auth_id` = Asgardeo sub, `password_hash` only for local password users), `student_profiles` |
+| user | `users` (`external_auth_id` = Asgardeo sub, no passwords are stored), `student_profiles` |
 | mentor | `mentors`, `expertise_categories`, `expertises`, `mentor_expertises`, `availability_slots`, `mentor_verifications` |
 | booking | `bookings`, `mentoring_sessions`, `reviews` |
 | notification | `notifications`, `conversations`, `conversation_participants`, `messages` |
@@ -196,7 +195,7 @@ Important constraints:
 
 ## Authentication
 
-Login is handled by Asgardeo (organization `teamcylix`, application MentorConnect). The frontend signs the user in with the Asgardeo SDK and sends the access token as `Authorization: Bearer <token>`.
+Login is handled only by Asgardeo (organization `teamcylix`, application MentorConnect); the API has no password login. The frontend signs the user in with the Asgardeo SDK and sends the access token as `Authorization: Bearer <token>`. Any other token (HS256, opaque, another application) gets 401.
 
 The Worker checks the token:
 
@@ -208,31 +207,13 @@ First login:
 
 1. `GET /api/users/me` returns 404 `User is not registered`. Other protected routes return 403 until the user registers.
 2. The frontend asks for the role and calls `POST /api/users/register` with `{ "role": "STUDENT", "firstName": "Kamal", "lastName": "Perera", "phone": "+94771234567" }` (role `STUDENT` or `MENTOR`, phone optional).
-3. The user is created with `id` and `externalAuthId` = token `sub` and `email` from the token `email` claim (Asgardeo must send it: application > User Attributes). A STUDENT also gets an empty student profile. Answers: `201`, `400` (validation or no `email` claim), `401`, `409` already registered or email taken.
+3. The user is created with `id` and `externalAuthId` = token `sub` and `email` from the token `email` claim. A STUDENT also gets an empty student profile. Answers: `201`, `400` (validation or no `email` claim), `401`, `409` already registered or email taken.
 
-Asgardeo application settings: redirect URLs and allowed origins `http://localhost:5173` and the Netlify URL, access token type JWT, scopes `openid profile email`.
+Asgardeo application settings (Applications > MentorConnect):
 
-### Local password login (testing only)
-
-With `PASSWORD_LOGIN=true` in `.dev.vars`, `POST /api/auth/register` and `POST /api/auth/login` return `{ "token": "...", "user": { ... } }` and HS256 tokens are accepted. In `wrangler.toml` it is `"false"`, so in production these routes answer 404 and HS256 tokens get 401.
-
-- JWT HS256, claims `sub` (`external_auth_id`), `email`, `role`, `exp` (24 hours).
-- Passwords: PBKDF2-SHA256, random salt per user, 100000 iterations (the Workers maximum), stored as `pbkdf2$iterations$salt$hash`. Asgardeo users have no password and cannot use this login.
-
-Register body:
-
-```json
-{
-  "email": "kamal@example.com",
-  "password": "Passw0rd!",
-  "role": "STUDENT",
-  "firstName": "Kamal",
-  "lastName": "Perera",
-  "phone": "+94771234567"
-}
-```
-
-Login body: `{ "email": "...", "password": "..." }`.
+- Protocol: Authorized redirect URLs and Allowed origins `http://localhost:5173` and the Cloudflare Pages URL; access token type **JWT**; access token attributes include **email**
+- User Attributes: Email (and first and last name) requested
+- Scopes requested by the frontend: `openid profile email`
 
 ## API conventions
 
@@ -254,8 +235,8 @@ Full text: `docs/api/00-conventions.md`.
   "status": 400,
   "error": "BAD_REQUEST",
   "message": "Validation failed",
-  "path": "/api/auth/register",
-  "fieldErrors": [{ "field": "email", "message": "must be a valid email" }]
+  "path": "/api/users/register",
+  "fieldErrors": [{ "field": "role", "message": "must be STUDENT or MENTOR" }]
 }
 ```
 
@@ -270,8 +251,9 @@ Status of every endpoint is tracked in `docs/api/API-CHECKS.md`. "Any" means any
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/health` | `{ "status": "UP", "time": "..." }` |
-| POST | `/api/auth/register` | local only (`PASSWORD_LOGIN=true`), STUDENT or MENTOR |
-| POST | `/api/auth/login` | local only (`PASSWORD_LOGIN=true`) |
+| GET | `/api/files/avatars/...` | profile images (see Files) |
+
+Login itself happens in Asgardeo, not in this API.
 
 ### User
 
@@ -365,28 +347,31 @@ Collections are in `docs/api/postman/edge-api/`:
 
 | File | Content |
 |---|---|
-| `mentorconnect-edge-api.postman_collection.json` | auth, user, mentor, student profile and upload-url requests |
+| `mentorconnect-edge-api.postman_collection.json` | register, user, mentor, student profile and upload-url requests |
 | `mentorconnect-edge-api-flow.postman_collection.json` | end-to-end flow: setup, booking, session, notifications, conversations (56 requests) |
 | `mentorconnect-edge-api-asgardeo.postman_collection.json` | real Asgardeo login (OAuth 2.0 with PKCE): me before register, register, me after |
 
-The first two use the local password login (`PASSWORD_LOGIN=true`). Steps:
+All requests use real Asgardeo access tokens.
 
-1. Apply migrations and run `npm run dev`.
-2. Create the admin user (see [Create a local admin user](#create-a-local-admin-user)).
-3. Import a collection, keep `baseUrl` as `http://127.0.0.1:8787` (or `http://localhost:8787`).
-4. Run the collection top to bottom with the Collection Runner. The requests save ids and tokens into collection variables, so do not run single requests out of order.
-
-With newman (not a project dependency):
-
-```bash
-npx newman run docs/api/postman/edge-api/mentorconnect-edge-api-flow.postman_collection.json
-```
-
-Asgardeo collection (run by hand in Postman, newman cannot open the login page):
+Getting a token (Postman desktop app):
 
 1. In the Asgardeo console add `https://oauth.pstmn.io/v1/callback` to the application's Authorized redirect URLs (Protocol tab).
-2. Import the collection, open the collection's Authorization tab and click **Get New Access Token**. Log in with an Asgardeo test user in the browser window, then **Use Token**.
-3. Send the requests in order. Use a test user that is not registered yet.
+2. Import `mentorconnect-edge-api-asgardeo.postman_collection.json`, open the collection's Authorization tab and click **Get New Access Token**. Log in with an Asgardeo user in the browser window, then **Use Token**. The token is shown in Manage Access Tokens; copy it from there.
+
+Running the main and flow collections:
+
+1. Create the Asgardeo test users: the admin from `0002_seed.sql`, a mentor, a student, and a fourth user (`outsiderToken` in the flow collection, `mentorNoProfileToken` in the main one).
+2. Reset the local database so those users are not registered yet, then `npm run dev`.
+3. Get one token per user (above) and paste them into the collection variables `adminToken`, `mentorToken`, `studentToken` and the fourth one. Tokens expire after about an hour.
+4. Run the collection top to bottom with the Collection Runner. The setup requests register the users through `POST /api/users/register`, and ids are saved into collection variables, so do not run single requests out of order. Reset the database again before the next run.
+
+With newman (not a project dependency), pass the tokens as variables:
+
+```bash
+npx newman run docs/api/postman/edge-api/mentorconnect-edge-api-flow.postman_collection.json --env-var adminToken=... --env-var mentorToken=... --env-var studentToken=... --env-var outsiderToken=...
+```
+
+The Asgardeo collection checks a single user's first login: me before register (404), register (201), me (200), register again (409).
 
 ## Deployment
 
@@ -404,10 +389,13 @@ npm run deploy
 Before the first deploy:
 
 1. Put the real `database_id` from `d1 create` into `wrangler.toml`.
-2. Add the Netlify URL to `ALLOWED_ORIGINS` in `wrangler.toml` and to the CORS policy of the `mentorconnect-files` bucket.
+2. Add the Cloudflare Pages URL of the frontend to `ALLOWED_ORIGINS` in `wrangler.toml` and to the CORS policy of the `mentorconnect-files` bucket.
 3. Create the admin user in Asgardeo, then run `node scripts/make-admin-seed.mjs` with that email and its Asgardeo User ID, before `migrations apply --remote`. After that, `0001` and `0002` must not be edited; schema or seed changes go into a new `0003_*.sql`.
-4. Keep `PASSWORD_LOGIN = "false"` in `wrangler.toml`. Production needs no `JWT_SECRET`.
-5. Add the Netlify URL to the Asgardeo application's redirect URLs and allowed origins.
+4. Add the Cloudflare Pages URL to the Asgardeo application's redirect URLs and allowed origins.
+
+### Frontend on Cloudflare Pages
+
+The React frontend is deployed by the frontend developers: Workers & Pages > Create > Pages > Connect to Git, framework preset React (Vite), build command `npm run build`, output directory `dist`, and environment variables for the API URL and the Asgardeo client id and base URL (`https://api.asgardeo.io/t/teamcylix`). Without a top-level `404.html`, Pages serves `index.html` for every route, so client-side routes work on refresh.
 
 After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 
@@ -415,8 +403,8 @@ After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 
 | Developer | Owns |
 |---|---|
-| Ravindu (ravinduanushka) | `package.json`, `wrangler.toml`, `tsconfig.json`, `.gitignore`, `src/index.ts`, `src/config`, `src/exception`, `src/util`, `src/auth`, `src/user`, `src/mentor`, `docs/api/API-CHECKS.md`, `docs/api/postman` |
-| Dasuni (dasunisenanayake25) | `migrations/`, `src/booking`, `src/notification`, the real `database_id`, deploy |
+| Ravindu (ravinduanushka) | `package.json`, `wrangler.toml`, `tsconfig.json`, `.gitignore`, `src/index.ts`, `src/config`, `src/exception`, `src/util`, `src/user`, `src/mentor`, `docs/api/API-CHECKS.md`, `docs/api/postman` |
+| Dasuni (dasunisenanayake25) | `migrations/`, `scripts/`, `src/booking`, `src/notification`, `src/file`, the real `database_id`, deploy |
 
 - Branch `feature/<name>` from `dev`, pull request into `dev`, merge after review.
 - Commit messages are one line: `feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`.
@@ -429,4 +417,4 @@ After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 - `/internal/*` endpoints from the service specs are not built.
 - Not yet covered by Postman: `/api/health`, session start (success case), session complete, reviews. Reviews cannot be reached in the flow because a review needs a COMPLETED booking and a session can only start 15 minutes before its slot.
 - The spec docs in `docs/api` still describe the Spring microservices (ports 8081 to 8086, the payment-service confirm). The Worker follows them except where this README says otherwise.
-- Postman covers Asgardeo only through the manual Asgardeo collection; automated runs use the local password login.
+- Postman runs need fresh Asgardeo tokens (about one hour) and unregistered Asgardeo users, so the local database is reset before each run.

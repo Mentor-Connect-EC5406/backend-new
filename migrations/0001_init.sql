@@ -4,9 +4,8 @@
 -- user
 CREATE TABLE users (
                        id                TEXT PRIMARY KEY CHECK (length(id) = 36),
-                       external_auth_id  TEXT NOT NULL UNIQUE,                 -- Asgardeo sub (equals id for local users)
+                       external_auth_id  TEXT NOT NULL UNIQUE,                 -- Asgardeo sub (equals id)
                        email             TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                       password_hash     TEXT,                                 -- NULL for Asgardeo users
                        first_name        TEXT NOT NULL,
                        last_name         TEXT NOT NULL,
                        phone             TEXT,

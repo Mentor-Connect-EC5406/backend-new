@@ -1,6 +1,10 @@
 import { unauthorized } from "../exception/api-error";
 import type { Env } from "./env";
-import { b64urlDecode } from "./jwt";
+
+const b64urlDecode = (s: string) => {
+  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+};
 
 export type AsgardeoClaims = {
   sub: string;
