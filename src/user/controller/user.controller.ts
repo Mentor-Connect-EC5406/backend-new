@@ -20,7 +20,7 @@ userController.get("/api/users/me", authenticate, async (c) => {
 
 userController.put("/api/users/me", authenticate, async (c) => {
   const body = await parseBody(c.req.raw, updateMeSchema);
-  return c.json(await service.updateMe(c.env.DB, c.get("user"), body));
+  return c.json(await service.updateMe(c.env, c.get("user"), body));
 });
 
 userController.get("/api/users", authenticate, requireRole("ADMIN"), async (c) => {
@@ -34,8 +34,8 @@ userController.put("/api/users/:id/status", authenticate, requireRole("ADMIN"), 
 });
 
 userController.post("/api/users/me/avatar-upload-url", authenticate, async (c) => {
-  await parseBody(c.req.raw, avatarUploadUrlSchema);
-  return c.json(service.avatarUploadUrl());
+  const body = await parseBody(c.req.raw, avatarUploadUrlSchema);
+  return c.json(await service.avatarUploadUrl(c.env, c.get("user"), body));
 });
 
 userController.get("/api/students/me/profile", authenticate, requireRole("STUDENT"), async (c) => {

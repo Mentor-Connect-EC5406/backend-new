@@ -1993,6 +1993,96 @@
       "name": "5. Verification",
       "item": [
         {
+          "name": "5.0a POST verification-upload-url for 5.1 (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verification-upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verification-upload-url"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"application/pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"key is under 'verifications/' + pm.collectionVariables.get('mentorId') + '/'\", () => pm.expect(j.key.startsWith('verifications/' + pm.collectionVariables.get('mentorId') + '/')).to.be.true);",
+                  "pm.test(\"url expires in 300 seconds\", () => pm.expect(j.expiresInSeconds).to.equal(300));",
+                  "pm.collectionVariables.set(\"documentUploadUrl\", j.uploadUrl);",
+                  "pm.collectionVariables.set(\"documentKey\", j.key);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.0b PUT document to R2 (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/pdf"
+              }
+            ],
+            "url": "{{documentUploadUrl}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "5.1 POST verification (201)",
           "event": [
             {
@@ -2020,7 +2110,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"documentKey\":\"verifications/{{mentorId}}/a.pdf\"}"
+              "raw": "{\n  \"documentKey\": \"{{documentKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/api/mentors/me/verifications",
@@ -3098,7 +3193,7 @@
                 "exec": [
                   "pm.test(\"status 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
                   "var j = pm.response.json();",
-                  "pm.test(\"uploadUrl and key are null\", function () { pm.expect(j.uploadUrl).to.equal(null); pm.expect(j.key).to.equal(null); });"
+                  "pm.test(\"uploadUrl, key and expiresInSeconds are set\", function () { pm.expect(j.uploadUrl).to.be.a(\"string\"); pm.expect(j.key.indexOf(\"avatars/\")).to.equal(0); pm.expect(j.expiresInSeconds).to.equal(300); });"
                 ]
               }
             }
@@ -3149,7 +3244,7 @@
                 "exec": [
                   "pm.test(\"status 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
                   "var j = pm.response.json();",
-                  "pm.test(\"uploadUrl and key are null\", function () { pm.expect(j.uploadUrl).to.equal(null); pm.expect(j.key).to.equal(null); });"
+                  "pm.test(\"uploadUrl, key and expiresInSeconds are set\", function () { pm.expect(j.uploadUrl).to.be.a(\"string\"); pm.expect(j.key.indexOf(\"avatars/\")).to.equal(0); pm.expect(j.expiresInSeconds).to.equal(300); });"
                 ]
               }
             }
@@ -3296,7 +3391,7 @@
                 "exec": [
                   "pm.test(\"status 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
                   "var j = pm.response.json();",
-                  "pm.test(\"uploadUrl and key are null\", function () { pm.expect(j.uploadUrl).to.equal(null); pm.expect(j.key).to.equal(null); });"
+                  "pm.test(\"uploadUrl, key and expiresInSeconds are set\", function () { pm.expect(j.uploadUrl).to.be.a(\"string\"); pm.expect(j.key.indexOf(\"verifications/\")).to.equal(0); pm.expect(j.expiresInSeconds).to.equal(300); });"
                 ]
               }
             }
@@ -3441,7 +3536,7 @@
                 "exec": [
                   "pm.test(\"status 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
                   "var j = pm.response.json();",
-                  "pm.test(\"uploadUrl and key are null\", function () { pm.expect(j.uploadUrl).to.equal(null); pm.expect(j.key).to.equal(null); });"
+                  "pm.test(\"uploadUrl, key and expiresInSeconds are set\", function () { pm.expect(j.uploadUrl).to.be.a(\"string\"); pm.expect(j.key.indexOf(\"verifications/\")).to.equal(0); pm.expect(j.expiresInSeconds).to.equal(300); });"
                 ]
               }
             }
@@ -3680,17 +3775,6 @@
           "response": []
         }
       ]
-    },
-    {
-      "name": "New Request",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": ""
-        }
-      },
-      "response": []
     }
   ],
   "variable": [
@@ -3781,6 +3865,14 @@
     {
       "key": "mentorNoProfileToken",
       "secret": true
+    },
+    {
+      "key": "documentUploadUrl",
+      "value": ""
+    },
+    {
+      "key": "documentKey",
+      "value": ""
     }
   ]
 }

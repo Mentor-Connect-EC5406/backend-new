@@ -14,7 +14,14 @@ export const sendMessageSchema = z.object({
   attachmentKey: z.string().max(500).nullable().optional(),
 });
 
+export const attachmentUploadUrlSchema = z.object({
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"], {
+    error: "must be image/jpeg, image/png or image/webp",
+  }),
+});
+
 export type ListNotificationsQuery = z.infer<typeof listNotificationsQuerySchema>;
+export type AttachmentUploadUrlRequest = z.infer<typeof attachmentUploadUrlSchema>;
 export type StartConversationRequest = z.infer<typeof startConversationSchema>;
 export type SendMessageRequest = z.infer<typeof sendMessageSchema>;
 
