@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { AppEnv, Env } from "./config/env";
-import { authController } from "./auth/controller/auth.controller";
 import { userController } from "./user/controller/user.controller";
 import { mentorController } from "./mentor/controller/mentor.controller";
 import { bookingController } from "./booking/controller/booking.controller";
@@ -27,7 +26,6 @@ app.use("*", (c, next) => {
 
 app.get("/api/health", (c) => c.json({ status: "UP", time: nowIso() }));
 
-app.route("/api/auth", authController);
 app.route("/", userController);
 app.route("/", mentorController);
 app.route("/", bookingController);

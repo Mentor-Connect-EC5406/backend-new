@@ -4,7 +4,7 @@
 - Sprint 2 backend: one Cloudflare Worker (Hono + TypeScript) with Cloudflare D1 (SQLite), managed with Wrangler
 - Worker name `mentorconnect-api`, entry `src/index.ts`, D1 binding `DB` for database `mentorconnect-db`
 - The long-term target is the Spring Boot microservices repo (github.com/ravinduanushka/backend). Modules here mirror those services so the code can be moved later
-- The React frontend (Netlify) is built by two other teammates and calls this API. Do not change paths or JSON shapes without telling them
+- The React frontend (Cloudflare Pages) is built by two other teammates and calls this API. Do not change paths or JSON shapes without telling them
 - Developers: Ravindu (ravinduanushka), Dasuni (dasunisenanayake25). Branch `dev`
 
 ## Sprint 2 scope
@@ -14,11 +14,12 @@
 ## Folder structure
 src/
 - index.ts: app, CORS, error handlers, route mounting, scheduled (cron) handler
-- config/: Env type, Asgardeo and local JWT verification, auth middleware, CurrentUser, requireRole
+- config/: Env type, Asgardeo token verification, auth middleware, CurrentUser, requireRole
 - exception/: ApiError factories, global error handler, 404 handler
-- util/: time, uuid, password hash, pagination
-- auth/, user/, mentor/, booking/, notification/: each has controller/, service/, repository/, entity/, dto/
+- util/: time, uuid, pagination, validation helpers, R2 presign
+- user/, mentor/, booking/, notification/: each has controller/, service/, repository/, entity/, dto/; file/ serves R2 files
 migrations/: 0001_init.sql (schema), 0002_seed.sql (admin user)
+scripts/: make-admin-seed.mjs (writes 0002_seed.sql)
 docs/api/: API specs, API-CHECKS.md, postman/edge-api/
 docs/database/schema/: source schemas from the Spring repo
 
@@ -30,8 +31,8 @@ docs/database/schema/: source schemas from the Spring repo
 - A module may read another module's tables with SQL. Writes to another module's tables are allowed only where a rule below says so
 
 ## Owners
-- Ravindu: package.json, wrangler.toml, tsconfig.json, .gitignore, src/index.ts, src/config, src/exception, src/util, src/auth, src/user, src/mentor, docs/api/API-CHECKS.md, docs/api/postman
-- Dasuni: migrations/, src/booking, src/notification, the real D1 database_id in wrangler.toml, deploy
+- Ravindu: package.json, wrangler.toml, tsconfig.json, .gitignore, src/index.ts, src/config, src/exception, src/util, src/user, src/mentor, docs/api/API-CHECKS.md, docs/api/postman
+- Dasuni: migrations/, scripts/, src/booking, src/notification, src/file, the real D1 database_id in wrangler.toml, deploy
 - Never edit another owner's files unless the developer asks
 
 ## API rules
@@ -42,14 +43,12 @@ docs/database/schema/: source schemas from the Spring repo
 - Ids UUID TEXT. Timestamps UTC ISO-8601 TEXT with milliseconds (2026-11-01T10:00:00.000Z). Money in cents. Enums uppercase TEXT
 
 ## Auth
-- Login is handled by Asgardeo (org teamcylix). The Worker verifies the RS256 access token with the Asgardeo JWKS and checks iss, aud (client id) and exp. Header: Authorization: Bearer <token>
+- Login is Asgardeo only (org teamcylix); there is no password login in the API. The Worker verifies the RS256 access token with the Asgardeo JWKS and checks iss, aud (client id), exp and nbf. Header: Authorization: Bearer <token>
 - The token sub is matched to users.external_auth_id. Role and account status always come from the users table, never from the token
-- First login: POST /api/users/register (role STUDENT or MENTOR) creates the users row; id and external_auth_id = sub, email from the token email claim, password_hash NULL
+- First login: POST /api/users/register (role STUDENT or MENTOR) creates the users row; id and external_auth_id = sub, email from the token email claim (Asgardeo must put email in the access token)
 - Unregistered token: GET /api/users/me gives 404 (frontend then calls register), other protected routes give 403
-- Local testing only: PASSWORD_LOGIN=true in .dev.vars enables POST /api/auth/register, POST /api/auth/login and HS256 tokens signed with JWT_SECRET (sub = external_auth_id). In wrangler.toml PASSWORD_LOGIN is "false", so production has no password login
-- Passwords: PBKDF2-SHA256 with Web Crypto, random salt per user, 100000 iterations (Workers maximum), stored as pbkdf2$iterations$salt$hash
-- A SUSPENDED account gets 403 on login and on every protected route
-- ADMIN accounts come only from migrations/0002_seed.sql (generated with scripts/make-admin-seed.mjs, with the admin's Asgardeo User ID)
+- A SUSPENDED account gets 403 on every protected route
+- ADMIN accounts come only from migrations/0002_seed.sql, written by scripts/make-admin-seed.mjs with the admin's email and Asgardeo User ID
 
 ## Business rules
 - Roles: STUDENT, MENTOR, ADMIN
@@ -62,8 +61,8 @@ docs/database/schema/: source schemas from the Spring repo
 - Admin cannot suspend their own account (409)
 
 ## Config and secrets
-- Non-secret settings in wrangler.toml [vars]: ALLOWED_ORIGINS (comma-separated, Netlify URL and http://localhost:5173), ASGARDEO_ISSUER, ASGARDEO_JWKS_URL, ASGARDEO_CLIENT_ID, PASSWORD_LOGIN, R2_ACCOUNT_ID, R2_BUCKET
-- Secrets: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY through .dev.vars (local) and wrangler secret put (deploy); JWT_SECRET only in .dev.vars for local password login. Never in code, docs, Postman files or git
+- Non-secret settings in wrangler.toml [vars]: ALLOWED_ORIGINS (comma-separated, Cloudflare Pages URL and http://localhost:5173), ASGARDEO_ISSUER, ASGARDEO_JWKS_URL, ASGARDEO_CLIENT_ID, R2_ACCOUNT_ID, R2_BUCKET
+- Secrets: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY only, through .dev.vars (local) and wrangler secret put (deploy). Never in code, docs, Postman files or git
 
 ## Workflow for Claude Code
 - One task at a time. After each task: npx tsc --noEmit, npm run dev, test with curl, then stop and list the Postman requests (method, URL, headers, body, expected status for success, 400, 401/403, 404/409)

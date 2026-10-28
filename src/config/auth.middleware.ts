@@ -2,31 +2,13 @@ import { createMiddleware } from "hono/factory";
 import { type ApiError, forbidden, notFound, unauthorized } from "../exception/api-error";
 import { verifyAsgardeoToken } from "./asgardeo";
 import type { Identity, Role } from "./current-user";
-import { type AppEnv, type Env, passwordLoginEnabled } from "./env";
-import { verifyJwt } from "./jwt";
+import type { AppEnv, Env } from "./env";
 
-const tokenAlg = (token: string): string | undefined => {
-  try {
-    return JSON.parse(atob(token.split(".")[0]!.replace(/-/g, "+").replace(/_/g, "/"))).alg;
-  } catch {
-    return undefined;
-  }
-};
-
-// RS256 goes to Asgardeo JWKS; HS256 is the local password login and works only when PASSWORD_LOGIN is on
+// only Asgardeo access tokens are accepted
 async function identify(env: Env, header: string | undefined): Promise<Identity> {
   if (!header?.startsWith("Bearer ")) throw unauthorized("Missing bearer token");
-  const token = header.slice(7);
-  const alg = tokenAlg(token);
-  if (alg === "RS256") {
-    const claims = await verifyAsgardeoToken(env, token);
-    return { sub: claims.sub, email: claims.email ?? null };
-  }
-  if (alg === "HS256" && passwordLoginEnabled(env)) {
-    const claims = await verifyJwt(token, env.JWT_SECRET!);
-    return { sub: claims.sub, email: claims.email };
-  }
-  throw unauthorized("Invalid token");
+  const claims = await verifyAsgardeoToken(env, header.slice(7));
+  return { sub: claims.sub, email: claims.email ?? null };
 }
 
 // valid token, users row not needed (POST /api/users/register)

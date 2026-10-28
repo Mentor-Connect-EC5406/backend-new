@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4631b7dd-a9d2-4315-bffe-084d8775f980",
     "name": "MentorConnect Edge API - auth, user, mentor",
-    "description": "FIRST TIME ONLY: send A1 alone, then run in a terminal:\nnpx wrangler d1 execute mentorconnect-db --local --command \"UPDATE users SET role='ADMIN' WHERE email='admin@x.com'\"\nThen run the whole collection (Runner). Set baseUrl to the port printed by npm run dev.",
+    "description": "MentorConnect Edge API - auth, user, mentor\n\n## Asgardeo tokens (login is Asgardeo only)\nBefore a run, paste one Asgardeo access token per role into the collection variables: `adminToken`, `mentorToken`, `studentToken`, `mentorNoProfileToken`.\nGet each token with the Asgardeo login collection (Authorization > Get New Access Token), logging in as a different Asgardeo test user each time. The admin user must be the one in `migrations/0002_seed.sql`; the other users must not be registered yet, so reset the local database before each run:\n`Remove-Item -Recurse -Force .wrangler\\state` then `npx wrangler d1 migrations apply mentorconnect-db --local`.\nTokens expire after about an hour.\n\nRun the whole collection top to bottom with the Collection Runner. Set baseUrl to the port printed by npm run dev.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "55546837",
     "_collection_link": "https://go.postman.co/collection/55546837-4631b7dd-a9d2-4315-bffe-084d8775f980?source=collection_link"
@@ -12,46 +12,7 @@
       "name": "A. Auth and setup",
       "item": [
         {
-          "name": "A1 register admin (201 or 409)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('status 201/409', function () { pm.expect([201, 409]).to.include(pm.response.code); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"admin@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Admin\",\"lastName\":\"User\",\"phone\":\"+94771234567\"}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "A2 login admin (200) - run AFTER the SQL step",
+          "name": "A1 admin me (200)",
           "event": [
             {
               "listen": "test",
@@ -59,32 +20,73 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('adminToken', j.token);pm.collectionVariables.set('adminId', j.user.id);pm.test('role is ADMIN', function () { pm.expect(j.user.role).to.eql('ADMIN'); }); }"
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('adminId', j.id); pm.test('role is ADMIN', function () { pm.expect(j.role).to.eql('ADMIN'); }); }"
                 ]
               }
             }
           ],
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"admin@x.com\",\"password\":\"Passw0rd!\"}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
+              "raw": "{{baseUrl}}/api/users/me",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
-                "login"
+                "users",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "A2 student me before register (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.expect([404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
               ]
             }
           },
@@ -108,7 +110,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
-                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('mentorToken', j.token);pm.collectionVariables.set('mentorUserId', j.user.id); }"
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('mentorUserId', j.id); }"
                 ]
               }
             }
@@ -121,20 +123,35 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"mentor{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"MENTOR\",\"firstName\":\"Nimal\",\"lastName\":\"Silva\",\"phone\":\"+94771234567\"}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
+              "raw": "{{baseUrl}}/api/users/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
+                "users",
                 "register"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"MENTOR\",\n  \"firstName\": \"Nimal\",\n  \"lastName\": \"Silva\",\n  \"phone\": \"+94771234567\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": []
@@ -148,7 +165,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 201', function () { pm.expect([201]).to.include(pm.response.code); });",
-                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('studentToken', j.token);pm.collectionVariables.set('studentId', j.user.id); }"
+                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('studentId', j.id); }"
                 ]
               }
             }
@@ -161,26 +178,41 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Kamal\",\"lastName\":\"Perera\",\"phone\":\"+94771234567\"}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
+              "raw": "{{baseUrl}}/api/users/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
+                "users",
                 "register"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\",\n  \"phone\": \"+94771234567\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": []
         },
         {
-          "name": "A5 register duplicate email (409)",
+          "name": "A5 register student again (409)",
           "event": [
             {
               "listen": "test",
@@ -200,20 +232,35 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"STUDENT\",\"firstName\":\"Kamal\",\"lastName\":\"Perera\",\"phone\":\"+94771234567\"}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
+              "raw": "{{baseUrl}}/api/users/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
+                "users",
                 "register"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STUDENT\",\n  \"firstName\": \"Kamal\",\n  \"lastName\": \"Perera\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": []
@@ -239,26 +286,41 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"bad{{runId}}@x.com\",\"password\":\"Passw0rd!\",\"role\":\"ADMIN\",\"firstName\":\"Bad\",\"lastName\":\"Role\",\"phone\":\"+94771234567\"}"
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
+              "raw": "{{baseUrl}}/api/users/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
+                "users",
                 "register"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorNoProfileToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\",\n  \"firstName\": \"Bad\",\n  \"lastName\": \"Role\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": []
         },
         {
-          "name": "A7 login wrong password (401)",
+          "name": "A7 me without token (401)",
           "event": [
             {
               "listen": "test",
@@ -271,33 +333,27 @@
             }
           ],
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"WrongPass1\"}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
+              "raw": "{{baseUrl}}/api/users/me",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
-                "login"
+                "users",
+                "me"
               ]
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "response": []
         },
         {
-          "name": "A8 login student (200)",
+          "name": "A8 student me after register (200)",
           "event": [
             {
               "listen": "test",
@@ -305,32 +361,33 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });",
-                  "if (pm.response.code < 300) { const j = pm.response.json(); pm.collectionVariables.set('studentToken', j.token); }"
+                  "pm.test('same student', function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('studentId')); });"
                 ]
               }
             }
           ],
           "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"student{{runId}}@x.com\",\"password\":\"Passw0rd!\"}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
+              "raw": "{{baseUrl}}/api/users/me",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
-                "login"
+                "users",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
               ]
             }
           },
@@ -3687,9 +3744,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"status 201\", function () { pm.expect([201]).to.include(pm.response.code); });",
-                  "var j = pm.response.json();",
-                  "pm.collectionVariables.set(\"mentorNoProfileToken\", j.token);"
+                  "pm.test(\"status 201\", function () { pm.expect([201]).to.include(pm.response.code); });"
                 ]
               }
             }
@@ -3702,25 +3757,35 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"noprofile{{runId}}@x.com\",\n  \"password\": \"Passw0rd!\",\n  \"role\": \"MENTOR\",\n  \"firstName\": \"No\",\n  \"lastName\": \"Profile\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
+              "raw": "{{baseUrl}}/api/users/register",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "auth",
+                "users",
                 "register"
               ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorNoProfileToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"MENTOR\",\n  \"firstName\": \"No\",\n  \"lastName\": \"Profile\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": []
