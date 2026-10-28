@@ -9,9 +9,9 @@ const PREFIX = "/api/files/";
 
 // avatars load in <img> tags, so they need no token
 fileController.get("/api/files/avatars/*", async (c) => {
-  return service.serveFile(c.env, null, c.req.path.slice(PREFIX.length));
+  return await service.serveFile(c.env, null, c.req.path.slice(PREFIX.length));
 });
 
 fileController.get("/api/files/*", authenticate, async (c) => {
-  return service.serveFile(c.env, c.get("user"), c.req.path.slice(PREFIX.length));
+  return await service.serveFile(c.env, c.get("user"), c.req.path.slice(PREFIX.length));
 });
