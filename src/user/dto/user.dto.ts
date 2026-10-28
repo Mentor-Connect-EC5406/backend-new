@@ -52,6 +52,7 @@ export const avatarUploadUrlSchema = z.object({
 });
 
 export type UpdateStudentProfileRequest = z.infer<typeof updateStudentProfileSchema>;
+export type AvatarUploadUrlRequest = z.infer<typeof avatarUploadUrlSchema>;
 
 export type StudentProfileResponse = {
   id: string;
@@ -64,6 +65,3 @@ export type StudentProfileResponse = {
   interests: string | null;
   updatedAt: string;
 };
-
-// R2 comes later
-export type UploadUrlResponse = { uploadUrl: null; key: null };

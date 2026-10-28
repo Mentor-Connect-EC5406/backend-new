@@ -3,7 +3,12 @@ import { authenticate } from "../../config/auth.middleware";
 import type { AppEnv } from "../../config/env";
 import { pageQuerySchema } from "../../util/pagination";
 import { parse, parseBody } from "../../util/validate";
-import { listNotificationsQuerySchema, sendMessageSchema, startConversationSchema } from "../dto/notification.dto";
+import {
+  attachmentUploadUrlSchema,
+  listNotificationsQuerySchema,
+  sendMessageSchema,
+  startConversationSchema,
+} from "../dto/notification.dto";
 import * as conversations from "../service/conversation.service";
 import * as notifications from "../service/notification.service";
 
@@ -49,5 +54,6 @@ notificationController.put("/api/conversations/:id/read", authenticate, async (c
 });
 
 notificationController.post("/api/conversations/:id/attachment-upload-url", authenticate, async (c) => {
-  return c.json(await conversations.attachmentUploadUrl(c.env, c.get("user"), c.req.param("id")), 200);
+  const body = await parseBody(c.req.raw, attachmentUploadUrlSchema);
+  return c.json(await conversations.attachmentUploadUrl(c.env, c.get("user"), c.req.param("id"), body), 200);
 });

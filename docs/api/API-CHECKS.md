@@ -20,7 +20,7 @@ Known gaps:
 | user | PUT | /api/users/me | ✅ | ✅ |
 | user | GET | /api/users | ✅ | ✅ |
 | user | PUT | /api/users/{id}/status | ✅ | ✅ |
-| user | POST | /api/users/me/avatar-upload-url | ✅ | ✅ |
+| user | POST | /api/users/me/avatar-upload-url | ✅ | ⬜ |
 | user | GET | /api/students/me/profile | ✅ | ✅ |
 | user | PUT | /api/students/me/profile | ✅ | ✅ |
 | mentor | GET | /api/mentors/me | ✅ | ✅ |
@@ -40,7 +40,7 @@ Known gaps:
 | mentor | GET | /api/mentors/me/verifications | ✅ | ✅ |
 | mentor | GET | /api/verifications | ✅ | ✅ |
 | mentor | PUT | /api/verifications/{id} | ✅ | ✅ |
-| mentor | POST | /api/mentors/me/verification-upload-url | ✅ | ✅ |
+| mentor | POST | /api/mentors/me/verification-upload-url | ✅ | ⬜ |
 | booking | POST | /api/bookings | ✅ | ✅ |
 | booking | GET | /api/bookings | ✅ | ✅ |
 | booking | GET | /api/bookings/{id} | ✅ | ✅ |
@@ -59,4 +59,5 @@ Known gaps:
 | notification | GET | /api/conversations/{id}/messages | ✅ | ✅ |
 | notification | POST | /api/conversations/{id}/messages | ✅ | ✅ |
 | notification | PUT | /api/conversations/{id}/read | ✅ | ✅ |
-| notification | POST | /api/conversations/{id}/attachment-upload-url | ✅ | ✅ |
+| notification | POST | /api/conversations/{id}/attachment-upload-url | ✅ | ⬜ |
+| file | GET | /api/files/{key} | ✅ | ⬜ |

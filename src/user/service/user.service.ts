@@ -1,8 +1,10 @@
 import type { CurrentUser } from "../../config/current-user";
-import { conflict, notFound } from "../../exception/api-error";
+import type { Env } from "../../config/env";
+import { badRequest, conflict, notFound } from "../../exception/api-error";
 import { type Page, toPage } from "../../util/pagination";
+import { MB, createUpload, requireUploaded, type UploadUrlResponse } from "../../util/r2";
 import { nowIso } from "../../util/time";
-import type { ListUsersQuery, UpdateMeRequest, UploadUrlResponse, UserResponse } from "../dto/user.dto";
+import type { AvatarUploadUrlRequest, ListUsersQuery, UpdateMeRequest, UserResponse } from "../dto/user.dto";
 import type { UserRow } from "../entity/user.entity";
 import * as repo from "../repository/user.repository";
 
@@ -29,10 +31,20 @@ export async function getMe(db: D1Database, me: CurrentUser): Promise<UserRespon
   return toResponse(await getOrThrow(db, me.id));
 }
 
-export async function updateMe(db: D1Database, me: CurrentUser, req: UpdateMeRequest): Promise<UserResponse> {
-  await getOrThrow(db, me.id);
-  await repo.updateProfile(db, me.id, req, nowIso());
-  return toResponse(await getOrThrow(db, me.id));
+const AVATAR_MAX_BYTES = 5 * MB;
+
+export async function updateMe(env: Env, me: CurrentUser, req: UpdateMeRequest): Promise<UserResponse> {
+  const current = await getOrThrow(env.DB, me.id);
+  const key = req.profileImageKey;
+  // a new avatar key must be the caller's own uploaded file
+  if (key && key !== current.profile_image_key) {
+    if (!key.startsWith(`avatars/${me.id}/`)) {
+      throw badRequest("Validation failed", [{ field: "profileImageKey", message: `must start with avatars/${me.id}/` }]);
+    }
+    await requireUploaded(env, key, "profileImageKey", AVATAR_MAX_BYTES);
+  }
+  await repo.updateProfile(env.DB, me.id, req, nowIso());
+  return toResponse(await getOrThrow(env.DB, me.id));
 }
 
 export async function listUsers(db: D1Database, q: ListUsersQuery): Promise<Page<UserResponse>> {
@@ -52,5 +64,5 @@ export async function updateStatus(
   return toResponse(await getOrThrow(db, id));
 }
 
-// R2 comes later
-export const avatarUploadUrl = (): UploadUrlResponse => ({ uploadUrl: null, key: null });
+export const avatarUploadUrl = (env: Env, me: CurrentUser, req: AvatarUploadUrlRequest): Promise<UploadUrlResponse> =>
+  createUpload(env, `avatars/${me.id}`, req.contentType);

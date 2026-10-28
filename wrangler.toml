@@ -4,6 +4,8 @@ compatibility_date = "2025-01-01"
 
 [vars]
 ALLOWED_ORIGINS = "http://localhost:5173"
+R2_ACCOUNT_ID = "2c97727756cee0364a289ef16242b565"
+R2_BUCKET = "mentorconnect-files"
 
 [triggers]
 crons = ["* * * * *"]

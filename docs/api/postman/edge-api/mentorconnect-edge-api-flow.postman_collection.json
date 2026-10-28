@@ -9,6 +9,14 @@
       "key": "baseUrl",
       "value": "http://127.0.0.1:8787",
       "type": "string"
+    },
+    {
+      "key": "documentUploadUrl",
+      "value": ""
+    },
+    {
+      "key": "documentKey",
+      "value": ""
     }
   ],
   "item": [
@@ -562,6 +570,96 @@
           ]
         },
         {
+          "name": "A10b. Mentor gets verification upload url (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mentors/me/verification-upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mentors",
+                "me",
+                "verification-upload-url"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"application/pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"key is under 'verifications/' + pm.collectionVariables.get('mentorId') + '/'\", () => pm.expect(j.key.startsWith('verifications/' + pm.collectionVariables.get('mentorId') + '/')).to.be.true);",
+                  "pm.test(\"url expires in 300 seconds\", () => pm.expect(j.expiresInSeconds).to.equal(300));",
+                  "pm.collectionVariables.set(\"documentUploadUrl\", j.uploadUrl);",
+                  "pm.collectionVariables.set(\"documentKey\", j.key);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A10c. Mentor uploads the document to R2 (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/pdf"
+              }
+            ],
+            "url": "{{documentUploadUrl}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "A11. Mentor submits verification (201)",
           "request": {
             "method": "POST",
@@ -595,7 +693,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentKey\": \"verifications/{{mentorId}}/flow-{{suffix}}.pdf\"\n}",
+              "raw": "{\n  \"documentKey\": \"{{documentKey}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2563,10 +2661,15 @@
           ]
         },
         {
-          "name": "C20. Attachment upload url is a stub (200)",
+          "name": "C20. Attachment upload url (200)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/conversations/{{conversationId}}/attachment-upload-url",
               "host": [
@@ -2588,6 +2691,15 @@
                   "type": "string"
                 }
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentType\": \"image/png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -2598,7 +2710,8 @@
                 "exec": [
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
                   "const j = pm.response.json();",
-                  "pm.test(\"uploadUrl and key are null\", () => pm.expect(j.uploadUrl === null && j.key === null).to.be.true);"
+                  "pm.test(\"key is under the conversation\", () => pm.expect(j.key.startsWith('attachments/' + pm.collectionVariables.get('conversationId') + '/')).to.be.true);",
+                  "pm.test(\"url expires in 300 seconds\", () => pm.expect(j.expiresInSeconds).to.equal(300));"
                 ]
               }
             }

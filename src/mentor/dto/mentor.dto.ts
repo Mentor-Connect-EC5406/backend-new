@@ -196,3 +196,5 @@ export const verificationUploadUrlSchema = z.object({
     error: "must be application/pdf, image/jpeg or image/png",
   }),
 });
+
+export type VerificationUploadUrlRequest = z.infer<typeof verificationUploadUrlSchema>;

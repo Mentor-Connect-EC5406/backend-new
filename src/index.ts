@@ -6,6 +6,7 @@ import { userController } from "./user/controller/user.controller";
 import { mentorController } from "./mentor/controller/mentor.controller";
 import { bookingController } from "./booking/controller/booking.controller";
 import { notificationController } from "./notification/controller/notification.controller";
+import { fileController } from "./file/controller/file.controller";
 import { expirePendingBookings } from "./booking/service/booking-expiry.service";
 import { errorHandler, notFoundHandler } from "./exception/error-handler";
 import { nowIso } from "./util/time";
@@ -31,6 +32,7 @@ app.route("/", userController);
 app.route("/", mentorController);
 app.route("/", bookingController);
 app.route("/", notificationController);
+app.route("/", fileController);
 
 app.onError(errorHandler);
 app.notFound(notFoundHandler);

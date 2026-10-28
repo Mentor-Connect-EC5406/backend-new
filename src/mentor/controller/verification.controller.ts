@@ -14,7 +14,7 @@ export const verificationController = new Hono<AppEnv>();
 
 verificationController.post("/api/mentors/me/verifications", authenticate, requireRole("MENTOR"), async (c) => {
   const body = await parseBody(c.req.raw, submitVerificationSchema);
-  return c.json(await service.submit(c.env.DB, c.get("user"), body), 201);
+  return c.json(await service.submit(c.env, c.get("user"), body), 201);
 });
 
 verificationController.get("/api/mentors/me/verifications", authenticate, requireRole("MENTOR"), async (c) => {
@@ -23,7 +23,7 @@ verificationController.get("/api/mentors/me/verifications", authenticate, requir
 
 verificationController.get("/api/verifications", authenticate, requireRole("ADMIN"), async (c) => {
   const query = parse(listVerificationsQuerySchema, c.req.query());
-  return c.json(await service.listAll(c.env.DB, query));
+  return c.json(await service.listAll(c.env, query));
 });
 
 verificationController.put("/api/verifications/:id", authenticate, requireRole("ADMIN"), async (c) => {
@@ -32,6 +32,6 @@ verificationController.put("/api/verifications/:id", authenticate, requireRole("
 });
 
 verificationController.post("/api/mentors/me/verification-upload-url", authenticate, requireRole("MENTOR"), async (c) => {
-  await parseBody(c.req.raw, verificationUploadUrlSchema);
-  return c.json(await service.uploadUrl(c.env.DB, c.get("user")));
+  const body = await parseBody(c.req.raw, verificationUploadUrlSchema);
+  return c.json(await service.uploadUrl(c.env, c.get("user"), body));
 });

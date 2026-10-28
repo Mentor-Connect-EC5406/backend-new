@@ -1,10 +1,12 @@
 import { badRequest, forbidden, notFound } from "../../exception/api-error";
 import { offsetOf, toPage, type Page, type PageQuery } from "../../util/pagination";
+import { MB, createUpload, requireUploaded, type UploadUrlResponse } from "../../util/r2";
 import { nowIso } from "../../util/time";
 import { newId } from "../../util/uuid";
 import type { CurrentUser } from "../../config/current-user";
 import type { Env } from "../../config/env";
 import type {
+  AttachmentUploadUrlRequest,
   ConversationResponse,
   MessageResponse,
   SendMessageRequest,
@@ -29,6 +31,8 @@ const toMessage = (r: MessageRow): MessageResponse => ({
   sentAt: r.sent_at,
   readAt: r.read_at,
 });
+
+const ATTACHMENT_MAX_BYTES = 10 * MB;
 
 // 404 when the chat does not exist, 403 when the caller is not in it
 async function requireParticipant(db: D1Database, conversationId: string, userId: string) {
@@ -77,12 +81,22 @@ export async function sendMessage(
   req: SendMessageRequest,
 ): Promise<MessageResponse> {
   await requireParticipant(env.DB, conversationId, user.id);
+  const key = req.attachmentKey ?? null;
+  // an attachment must be uploaded into this conversation's folder
+  if (key) {
+    if (!key.startsWith(`attachments/${conversationId}/`)) {
+      throw badRequest("Validation failed", [
+        { field: "attachmentKey", message: `must start with attachments/${conversationId}/` },
+      ]);
+    }
+    await requireUploaded(env, key, "attachmentKey", ATTACHMENT_MAX_BYTES);
+  }
   const row: MessageRow = {
     id: newId(),
     conversation_id: conversationId,
     sender_id: user.id,
     content: req.content,
-    attachment_key: req.attachmentKey ?? null,
+    attachment_key: key,
     sent_at: nowIso(),
     read_at: null,
   };
@@ -95,8 +109,13 @@ export async function markConversationRead(env: Env, user: CurrentUser, conversa
   await repo.markReadFromOthers(env.DB, conversationId, user.id, nowIso());
 }
 
-// R2 uploads are out of Sprint 2 scope
-export async function attachmentUploadUrl(env: Env, user: CurrentUser, conversationId: string) {
+// the key is attachments/{conversationId}/...
+export async function attachmentUploadUrl(
+  env: Env,
+  user: CurrentUser,
+  conversationId: string,
+  req: AttachmentUploadUrlRequest,
+): Promise<UploadUrlResponse> {
   await requireParticipant(env.DB, conversationId, user.id);
-  return { uploadUrl: null, key: null };
+  return createUpload(env, `attachments/${conversationId}`, req.contentType);
 }

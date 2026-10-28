@@ -41,8 +41,9 @@ In Sprint 2:
 
 - auth, user, mentor, booking, notification (including conversations and messages)
 - admin user management and mentor verification review
+- file uploads to Cloudflare R2 (profile images, verification documents, chat images)
 
-Out of scope (later): payments and Lemon Squeezy, R2 uploads (the upload-url endpoints return `{ "uploadUrl": null, "key": null }`), real email, analytics, mentorship programs, `/internal/*` service endpoints.
+Out of scope (later): payments and Lemon Squeezy, real email, analytics, mentorship programs, `/internal/*` service endpoints.
 
 ## Project structure
 
@@ -96,7 +97,12 @@ Create `.dev.vars` in the project root (it is git ignored):
 
 ```
 JWT_SECRET=use-a-long-random-string-here
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+R2_BUCKET=mentorconnect-files-dev
 ```
+
+Paste the R2 values without quotes or `< >`. `R2_BUCKET` here overrides `wrangler.toml`, so local uploads go to the dev bucket.
 
 Apply the migrations to the local D1 database and start the Worker:
 
@@ -137,8 +143,20 @@ Log in again after promoting, because the role is stored in the JWT.
 | `ALLOWED_ORIGINS` | `wrangler.toml` `[vars]` | comma-separated CORS origins, for example `http://localhost:5173,https://your-site.netlify.app`. Default `http://localhost:5173` |
 | `JWT_SECRET` | `.dev.vars` (local), `wrangler secret put` (deploy) | HS256 signing key. Never put it in code, docs, Postman files or git |
 | `DB` | `wrangler.toml` `[[d1_databases]]` | D1 binding. `database_id` must be the real id from `d1 create` |
+| `R2_ACCOUNT_ID` | `wrangler.toml` `[vars]` | Cloudflare account id, used for the R2 S3 endpoint |
+| `R2_BUCKET` | `wrangler.toml` `[vars]` (`mentorconnect-files`), `.dev.vars` (`mentorconnect-files-dev`) | bucket for uploads |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | `.dev.vars` (local), `wrangler secret put` (deploy) | R2 API token (Object Read & Write on both buckets). Never in code, docs, Postman files or git |
 
 The cron trigger `* * * * *` (every minute) runs the booking expiry job.
+
+### File uploads (Cloudflare R2)
+
+1. The client asks for an upload url (`POST .../avatar-upload-url`, `.../verification-upload-url` or `.../attachment-upload-url` with `{ "contentType": "image/png" }`) and gets `{ uploadUrl, key, expiresInSeconds: 300 }`.
+2. The client sends the file with `PUT uploadUrl` and the same `Content-Type`, straight to R2.
+3. The client saves `key` (`PUT /api/users/me` `profileImageKey`, `POST /api/mentors/me/verifications` `documentKey`, or a message `attachmentKey`). The API checks the key belongs to the caller and that the file exists and is within the size limit (avatar 5 MB, document and attachment 10 MB).
+4. Files are read through `GET /api/files/{key}`. Avatars need no token, so they work in `<img src>`. Verification documents need the admin or the owning mentor; chat attachments need a participant. Admins also get a 300 second `documentUrl` in `GET /api/verifications`.
+
+Keys look like `avatars/{userId}/{uuid}.png`, `verifications/{mentorId}/{uuid}.pdf` and `attachments/{conversationId}/{uuid}.png`. Both buckets need a CORS policy that allows `PUT` and `GET` with the `Content-Type` header from the frontend origins.
 
 ## Database
 
@@ -230,7 +248,7 @@ Status of every endpoint is tracked in `docs/api/API-CHECKS.md`. "Any" means any
 |---|---|---|
 | GET | `/api/users/me` | Any |
 | PUT | `/api/users/me` | Any |
-| POST | `/api/users/me/avatar-upload-url` | Any (stub, body `contentType` image/jpeg, image/png or image/webp) |
+| POST | `/api/users/me/avatar-upload-url` | Any (body `contentType` image/jpeg, image/png or image/webp) |
 | GET | `/api/students/me/profile` | Student (creates an empty profile if missing) |
 | PUT | `/api/students/me/profile` | Student (partial update, `academicYear` 1 to 10) |
 | GET | `/api/users` | Admin (`role`, `accountStatus`, `q`, `page`, `size`) |
@@ -253,7 +271,7 @@ Status of every endpoint is tracked in `docs/api/API-CHECKS.md`. "Any" means any
 | PUT | `/api/mentors/me/slots/{slotId}` | Mentor (only AVAILABLE or BLOCKED slots) |
 | DELETE | `/api/mentors/me/slots/{slotId}` | Mentor (409 if HELD or BOOKED) |
 | GET | `/api/mentors/{id}/slots` | Student (AVAILABLE future slots, range up to 31 days) |
-| POST | `/api/mentors/me/verification-upload-url` | Mentor (stub; body `contentType` application/pdf, image/jpeg or image/png, else 400; 404 if the mentor has no profile) |
+| POST | `/api/mentors/me/verification-upload-url` | Mentor (body `contentType` application/pdf, image/jpeg or image/png, else 400; 404 if the mentor has no profile) |
 | POST | `/api/mentors/me/verifications` | Mentor (`documentKey` must start with `verifications/{mentorId}/`) |
 | GET | `/api/mentors/me/verifications` | Mentor |
 | GET | `/api/verifications` | Admin (`status`, `page`, `size`) |
@@ -286,7 +304,13 @@ Status of every endpoint is tracked in `docs/api/API-CHECKS.md`. "Any" means any
 | GET | `/api/conversations/{id}/messages` | Participant |
 | POST | `/api/conversations/{id}/messages` | Participant |
 | PUT | `/api/conversations/{id}/read` | Participant |
-| POST | `/api/conversations/{id}/attachment-upload-url` | Participant (stub) |
+| POST | `/api/conversations/{id}/attachment-upload-url` | Participant (body `contentType` image/jpeg, image/png or image/webp) |
+
+### Files
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/files/{key}` | avatars: no token; verifications: Admin or the owning mentor; attachments: participants |
 
 ## Business rules
 
@@ -333,6 +357,8 @@ Only the developer who owns the Cloudflare account runs these:
 npx wrangler login
 npx wrangler d1 create mentorconnect-db
 npx wrangler secret put JWT_SECRET
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
 npx wrangler d1 migrations apply mentorconnect-db --remote
 npm run deploy
 ```
@@ -340,7 +366,7 @@ npm run deploy
 Before the first deploy:
 
 1. Put the real `database_id` from `d1 create` into `wrangler.toml`.
-2. Add the Netlify URL to `ALLOWED_ORIGINS` in `wrangler.toml`.
+2. Add the Netlify URL to `ALLOWED_ORIGINS` in `wrangler.toml` and to the CORS policy of the `mentorconnect-files` bucket.
 3. Confirm the admin email in `migrations/0002_seed.sql` before `migrations apply --remote`. After that, `0001` and `0002` must not be edited; schema or seed changes go into a new `0003_*.sql`.
 4. Use a new `JWT_SECRET` for production, different from `.dev.vars`.
 
@@ -359,8 +385,8 @@ After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 
 ## Known gaps and next steps
 
-- R2 uploads (avatar, verification documents, chat attachments) are stubs that return `{ "uploadUrl": null, "key": null }` after validation; `documentUrl` in `GET /api/verifications` is `null`.
+- R2 checks the file size only when the key is saved, and files that are uploaded but never saved, or replaced later, are not deleted yet.
 - Payments are not implemented: confirming a booking needs no payment.
 - `/internal/*` endpoints from the service specs are not built.
 - Not yet covered by Postman: `/api/health`, session start (success case), session complete, reviews. Reviews cannot be reached in the flow because a review needs a COMPLETED booking and a session can only start 15 minutes before its slot.
-- The spec docs in `docs/api` still describe the Spring microservices (ports 8081 to 8086, `/api/users/register`, upload responses with `expiresInSeconds`). The Worker follows them except where this README says otherwise.
+- The spec docs in `docs/api` still describe the Spring microservices (ports 8081 to 8086, `/api/users/register`). The Worker follows them except where this README says otherwise.
