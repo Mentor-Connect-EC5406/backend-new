@@ -10,6 +10,13 @@ export const updateMeSchema = z.object({
   profileImageKey: z.string().max(500).nullish(),
 });
 
+export const registerUserSchema = z.object({
+  role: z.enum(["STUDENT", "MENTOR"], { error: "must be STUDENT or MENTOR" }),
+  firstName: z.string().trim().min(1, "must not be blank").max(100),
+  lastName: z.string().trim().min(1, "must not be blank").max(100),
+  phone: phone.optional(),
+});
+
 export const listUsersQuerySchema = pageQuerySchema.extend({
   role: z.enum(["STUDENT", "MENTOR", "ADMIN"]).optional(),
   accountStatus: z.enum(["ACTIVE", "SUSPENDED", "DEACTIVATED"]).optional(),
@@ -21,6 +28,7 @@ export const updateStatusSchema = z.object({
 });
 
 export type UpdateMeRequest = z.infer<typeof updateMeSchema>;
+export type RegisterUserRequest = z.infer<typeof registerUserSchema>;
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 export type UserResponse = {

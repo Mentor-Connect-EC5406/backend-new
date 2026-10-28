@@ -14,7 +14,7 @@
 ## Folder structure
 src/
 - index.ts: app, CORS, error handlers, route mounting, scheduled (cron) handler
-- config/: Env type, JWT auth middleware, CurrentUser, requireRole
+- config/: Env type, Asgardeo and local JWT verification, auth middleware, CurrentUser, requireRole
 - exception/: ApiError factories, global error handler, 404 handler
 - util/: time, uuid, password hash, pagination
 - auth/, user/, mentor/, booking/, notification/: each has controller/, service/, repository/, entity/, dto/
@@ -42,12 +42,14 @@ docs/database/schema/: source schemas from the Spring repo
 - Ids UUID TEXT. Timestamps UTC ISO-8601 TEXT with milliseconds (2026-11-01T10:00:00.000Z). Money in cents. Enums uppercase TEXT
 
 ## Auth
-- POST /api/auth/register (roles STUDENT or MENTOR only) and POST /api/auth/login return a JWT
-- On register, users.external_auth_id is set to the new users.id (column kept from the schema, NOT NULL UNIQUE)
-- JWT HS256 with JWT_SECRET, claims sub (user id), email, role, exp (24 h). Header: Authorization: Bearer <token>
+- Login is handled by Asgardeo (org teamcylix). The Worker verifies the RS256 access token with the Asgardeo JWKS and checks iss, aud (client id) and exp. Header: Authorization: Bearer <token>
+- The token sub is matched to users.external_auth_id. Role and account status always come from the users table, never from the token
+- First login: POST /api/users/register (role STUDENT or MENTOR) creates the users row; id and external_auth_id = sub, email from the token email claim, password_hash NULL
+- Unregistered token: GET /api/users/me gives 404 (frontend then calls register), other protected routes give 403
+- Local testing only: PASSWORD_LOGIN=true in .dev.vars enables POST /api/auth/register, POST /api/auth/login and HS256 tokens signed with JWT_SECRET (sub = external_auth_id). In wrangler.toml PASSWORD_LOGIN is "false", so production has no password login
 - Passwords: PBKDF2-SHA256 with Web Crypto, random salt per user, 100000 iterations (Workers maximum), stored as pbkdf2$iterations$salt$hash
 - A SUSPENDED account gets 403 on login and on every protected route
-- ADMIN accounts come only from migrations/0002_seed.sql
+- ADMIN accounts come only from migrations/0002_seed.sql (generated with scripts/make-admin-seed.mjs, with the admin's Asgardeo User ID)
 
 ## Business rules
 - Roles: STUDENT, MENTOR, ADMIN
@@ -60,8 +62,8 @@ docs/database/schema/: source schemas from the Spring repo
 - Admin cannot suspend their own account (409)
 
 ## Config and secrets
-- Non-secret settings in wrangler.toml [vars], for example ALLOWED_ORIGINS (comma-separated, Netlify URL and http://localhost:5173)
-- Secrets: JWT_SECRET only through .dev.vars (local) and wrangler secret put (deploy). Never in code, docs, Postman files or git
+- Non-secret settings in wrangler.toml [vars]: ALLOWED_ORIGINS (comma-separated, Netlify URL and http://localhost:5173), ASGARDEO_ISSUER, ASGARDEO_JWKS_URL, ASGARDEO_CLIENT_ID, PASSWORD_LOGIN, R2_ACCOUNT_ID, R2_BUCKET
+- Secrets: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY through .dev.vars (local) and wrangler secret put (deploy); JWT_SECRET only in .dev.vars for local password login. Never in code, docs, Postman files or git
 
 ## Workflow for Claude Code
 - One task at a time. After each task: npx tsc --noEmit, npm run dev, test with curl, then stop and list the Postman requests (method, URL, headers, body, expected status for success, 400, 401/403, 404/409)
@@ -76,7 +78,7 @@ docs/database/schema/: source schemas from the Spring repo
 - npm run dev (local Worker on http://localhost:8787)
 - npx wrangler d1 migrations apply mentorconnect-db --local
 - npx tsc --noEmit
-- Developer only: npx wrangler login, npx wrangler d1 create mentorconnect-db, npx wrangler secret put JWT_SECRET, npx wrangler d1 migrations apply mentorconnect-db --remote, npm run deploy
+- Developer only: npx wrangler login, npx wrangler d1 create mentorconnect-db, npx wrangler secret put R2_ACCESS_KEY_ID, npx wrangler secret put R2_SECRET_ACCESS_KEY, npx wrangler d1 migrations apply mentorconnect-db --remote, npm run deploy
 
 ## Git (developers, by hand)
 - Branch feature/<name> from dev, PR into dev, merge after review

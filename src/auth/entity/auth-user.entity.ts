@@ -1,7 +1,8 @@
 export type AuthUserRow = {
   id: string;
   email: string;
-  password_hash: string;
+  external_auth_id: string;
+  password_hash: string | null;
   first_name: string;
   last_name: string;
   phone: string | null;

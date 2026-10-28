@@ -8,7 +8,7 @@ const enc = new TextEncoder();
 const b64url = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-const b64urlDecode = (s: string) => {
+export const b64urlDecode = (s: string) => {
   const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 };

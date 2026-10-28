@@ -1,10 +1,17 @@
-import type { CurrentUser } from "../../config/current-user";
+import type { CurrentUser, Identity } from "../../config/current-user";
 import type { Env } from "../../config/env";
 import { badRequest, conflict, notFound } from "../../exception/api-error";
 import { type Page, toPage } from "../../util/pagination";
 import { MB, createUpload, requireUploaded, type UploadUrlResponse } from "../../util/r2";
 import { nowIso } from "../../util/time";
-import type { AvatarUploadUrlRequest, ListUsersQuery, UpdateMeRequest, UserResponse } from "../dto/user.dto";
+import { newId } from "../../util/uuid";
+import type {
+  AvatarUploadUrlRequest,
+  ListUsersQuery,
+  RegisterUserRequest,
+  UpdateMeRequest,
+  UserResponse,
+} from "../dto/user.dto";
 import type { UserRow } from "../entity/user.entity";
 import * as repo from "../repository/user.repository";
 
@@ -25,6 +32,39 @@ async function getOrThrow(db: D1Database, id: string): Promise<UserRow> {
   const row = await repo.findById(db, id);
   if (!row) throw notFound("User not found");
   return row;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// first login: id and external_auth_id are the token sub (a new uuid when sub is not one), email from the token
+export async function register(env: Env, identity: Identity, req: RegisterUserRequest): Promise<UserResponse> {
+  if (!identity.email) {
+    throw badRequest("Validation failed", [{ field: "email", message: "the token has no email claim" }]);
+  }
+  if (await repo.findByExternalAuthId(env.DB, identity.sub)) throw conflict("User is already registered");
+  if (await repo.emailExists(env.DB, identity.email)) throw conflict("Email is already registered");
+
+  const id = UUID.test(identity.sub) ? identity.sub.toLowerCase() : newId();
+  try {
+    await repo.insertRegistered(
+      env.DB,
+      {
+        id,
+        externalAuthId: identity.sub,
+        email: identity.email,
+        firstName: req.firstName,
+        lastName: req.lastName,
+        phone: req.phone ?? null,
+        role: req.role,
+        now: nowIso(),
+      },
+      req.role === "STUDENT" ? newId() : null,
+    );
+  } catch (e) {
+    if (String(e).includes("UNIQUE")) throw conflict("User is already registered");
+    throw e;
+  }
+  return toResponse(await getOrThrow(env.DB, id));
 }
 
 export async function getMe(db: D1Database, me: CurrentUser): Promise<UserResponse> {

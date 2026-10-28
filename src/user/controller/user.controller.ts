@@ -1,10 +1,11 @@
 import { Hono } from "hono";
-import { authenticate, requireRole } from "../../config/auth.middleware";
+import { authenticate, authenticateIdentity, authenticateMe, requireRole } from "../../config/auth.middleware";
 import type { AppEnv } from "../../config/env";
 import { parse, parseBody } from "../../util/validate";
 import {
   avatarUploadUrlSchema,
   listUsersQuerySchema,
+  registerUserSchema,
   updateMeSchema,
   updateStatusSchema,
   updateStudentProfileSchema,
@@ -14,7 +15,12 @@ import * as service from "../service/user.service";
 
 export const userController = new Hono<AppEnv>();
 
-userController.get("/api/users/me", authenticate, async (c) => {
+userController.post("/api/users/register", authenticateIdentity, async (c) => {
+  const body = await parseBody(c.req.raw, registerUserSchema);
+  return c.json(await service.register(c.env, c.get("identity"), body), 201);
+});
+
+userController.get("/api/users/me", authenticateMe, async (c) => {
   return c.json(await service.getMe(c.env.DB, c.get("user")));
 });
 

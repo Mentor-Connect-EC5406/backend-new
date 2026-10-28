@@ -1,0 +1,232 @@
+{
+  "info": {
+    "name": "MentorConnect Edge API - Asgardeo login",
+    "description": "# MentorConnect Edge API - Asgardeo login\n\nChecks the real Asgardeo login against the Worker. Run by hand, newman cannot open the login page.\n\n## Before you run\n1. In the Asgardeo console (organization teamcylix), application MentorConnect > Protocol: add `https://oauth.pstmn.io/v1/callback` to Authorized redirect URLs and set the access token type to JWT.\n2. Start the Worker: `npm run dev`. Asgardeo tokens work locally because `wrangler.toml` points at the real Asgardeo JWKS.\n3. Collection > Authorization > Get New Access Token. Log in with an Asgardeo test user that is not registered yet, then Use Token.\n\n## Requests\nSend them in order: me (404, not registered), register (201), me (200), register again (409).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      {
+        "key": "grant_type",
+        "value": "authorization_code_with_pkce",
+        "type": "string"
+      },
+      {
+        "key": "authUrl",
+        "value": "https://api.asgardeo.io/t/teamcylix/oauth2/authorize",
+        "type": "string"
+      },
+      {
+        "key": "accessTokenUrl",
+        "value": "https://api.asgardeo.io/t/teamcylix/oauth2/token",
+        "type": "string"
+      },
+      {
+        "key": "clientId",
+        "value": "{{asgardeoClientId}}",
+        "type": "string"
+      },
+      {
+        "key": "scope",
+        "value": "openid profile email",
+        "type": "string"
+      },
+      {
+        "key": "redirect_uri",
+        "value": "https://oauth.pstmn.io/v1/callback",
+        "type": "string"
+      },
+      {
+        "key": "useBrowser",
+        "value": true,
+        "type": "boolean"
+      },
+      {
+        "key": "challengeAlgorithm",
+        "value": "S256",
+        "type": "string"
+      },
+      {
+        "key": "client_authentication",
+        "value": "body",
+        "type": "string"
+      },
+      {
+        "key": "addTokenTo",
+        "value": "header",
+        "type": "string"
+      },
+      {
+        "key": "tokenName",
+        "value": "asgardeo",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Me before register (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "me"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+              "pm.test(\"not registered\", () => pm.expect(pm.response.json().message).to.include(\"not registered\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Register as STUDENT (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"role\": \"STUDENT\",\n  \"firstName\": \"Asgardeo\",\n  \"lastName\": \"Tester\",\n  \"phone\": \"+94771234567\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+              "const j = pm.response.json();",
+              "pm.test(\"role STUDENT and email from the token\", () => { pm.expect(j.role).to.equal(\"STUDENT\"); pm.expect(j.email).to.be.a(\"string\"); });",
+              "pm.collectionVariables.set(\"userId\", j.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Me after register (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "me"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"same user\", () => pm.expect(pm.response.json().id).to.equal(pm.collectionVariables.get(\"userId\")));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Register again (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "register"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"role\": \"STUDENT\",\n  \"firstName\": \"A\",\n  \"lastName\": \"B\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status is 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8787"
+    },
+    {
+      "key": "asgardeoClientId",
+      "value": "m3dJhyb5oENx63qGPUVa9LrMpeQa"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ]
+}
