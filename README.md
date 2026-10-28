@@ -31,7 +31,7 @@ The long-term target is the Spring Boot microservices repo (github.com/ravinduan
 | Validation | zod 4 |
 | Database | Cloudflare D1 (SQLite), binding `DB`, database `mentorconnect-db` |
 | Tooling | Wrangler 4 |
-| Auth | JWT HS256 with Web Crypto, PBKDF2-SHA256 password hashing |
+| Auth | Asgardeo (OIDC, RS256 access tokens checked with JWKS via Web Crypto); local-only password login with JWT HS256 and PBKDF2-SHA256 |
 
 Worker name `mentorconnect-api`, entry `src/index.ts`.
 
@@ -58,19 +58,22 @@ backend-new/
 ├── migrations/
 │   ├── 0001_init.sql          full schema, all tables
 │   └── 0002_seed.sql          admin user (password hash only)
+├── scripts/
+│   └── make-admin-seed.mjs    writes 0002_seed.sql (asks for the admin's Asgardeo User ID)
 ├── docs/
 │   ├── api/                   API specs, API-CHECKS.md, postman/edge-api/
 │   └── database/              ER diagram and source schemas
 └── src/
     ├── index.ts               app, CORS, health, route mounting, error handlers, cron handler
-    ├── config/                Env type, JWT, auth middleware, CurrentUser, requireRole
+    ├── config/                Env type, Asgardeo and local JWT checks, auth middleware, CurrentUser, requireRole
     ├── exception/             ApiError factories, error handler, 404 handler
-    ├── util/                  time, uuid, password hash, pagination, zod parse helpers
-    ├── auth/                  register, login
-    ├── user/                  me, admin user management, student profile
+    ├── util/                  time, uuid, password hash, pagination, zod parse helpers, R2 presign
+    ├── auth/                  local-only password register and login
+    ├── user/                  register after Asgardeo login, me, admin user management, student profile
     ├── mentor/                profile, search, expertise, slots, verification
     ├── booking/               bookings, sessions, reviews, expiry cron
-    └── notification/          notifications, conversations, messages
+    ├── notification/          notifications, conversations, messages
+    └── file/                  GET /api/files/{key} from R2 with access rules
 ```
 
 Every module has the same layers:
@@ -97,12 +100,20 @@ Create `.dev.vars` in the project root (it is git ignored):
 
 ```
 JWT_SECRET=use-a-long-random-string-here
+PASSWORD_LOGIN=true
 R2_ACCESS_KEY_ID=your-r2-access-key-id
 R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
 R2_BUCKET=mentorconnect-files-dev
 ```
 
-Paste the R2 values without quotes or `< >`. `R2_BUCKET` here overrides `wrangler.toml`, so local uploads go to the dev bucket.
+Paste the R2 values without quotes or `< >`. Values here override `wrangler.toml`: `PASSWORD_LOGIN=true` turns on the local password login, and `R2_BUCKET` sends local uploads to the dev bucket.
+
+After pulling a change to `migrations/0001_init.sql`, reset the local database (local test data only):
+
+```bash
+Remove-Item -Recurse -Force .wrangler\state
+npx wrangler d1 migrations apply mentorconnect-db --local
+```
 
 Apply the migrations to the local D1 database and start the Worker:
 
@@ -125,7 +136,7 @@ npx tsc --noEmit
 
 ### Create a local admin user
 
-ADMIN accounts cannot be registered through the API. `migrations/0002_seed.sql` creates one ADMIN user when the migrations are applied. It holds only the PBKDF2 hash, so ask the developer who generated it for the password (never share it in git or chat).
+ADMIN accounts cannot be registered through the API. `migrations/0002_seed.sql` creates one ADMIN user when the migrations are applied. It holds only the PBKDF2 hash of the local test password, so ask the developer who generated it for the password (never share it in git or chat). Generate it again with `node scripts/make-admin-seed.mjs`; give the admin's Asgardeo User ID so the same account can also log in through Asgardeo.
 
 For local testing you can also promote a registered test user:
 
@@ -134,14 +145,18 @@ curl -X POST http://localhost:8787/api/auth/register -H "Content-Type: applicati
 npx wrangler d1 execute mentorconnect-db --local --command "UPDATE users SET role='ADMIN' WHERE email='admin@x.com'"
 ```
 
-Log in again after promoting, because the role is stored in the JWT.
+The role is read from the database on every request, so the next request already has the ADMIN role.
 
 ## Configuration and secrets
 
 | Name | Where | Purpose |
 |---|---|---|
 | `ALLOWED_ORIGINS` | `wrangler.toml` `[vars]` | comma-separated CORS origins, for example `http://localhost:5173,https://your-site.netlify.app`. Default `http://localhost:5173` |
-| `JWT_SECRET` | `.dev.vars` (local), `wrangler secret put` (deploy) | HS256 signing key. Never put it in code, docs, Postman files or git |
+| `ASGARDEO_ISSUER` | `wrangler.toml` `[vars]` | `https://api.asgardeo.io/t/teamcylix/oauth2/token`, must equal the token `iss` |
+| `ASGARDEO_JWKS_URL` | `wrangler.toml` `[vars]` | `https://api.asgardeo.io/t/teamcylix/oauth2/jwks`, public keys for the token signature |
+| `ASGARDEO_CLIENT_ID` | `wrangler.toml` `[vars]` | the MentorConnect application client id, must be in the token `aud` |
+| `PASSWORD_LOGIN` | `wrangler.toml` `[vars]` (`"false"`), `.dev.vars` (`true`) | turns on `/api/auth/*` and HS256 tokens. Keep it off in production |
+| `JWT_SECRET` | `.dev.vars` only | HS256 signing key for the local password login. Never put it in code, docs, Postman files or git |
 | `DB` | `wrangler.toml` `[[d1_databases]]` | D1 binding. `database_id` must be the real id from `d1 create` |
 | `R2_ACCOUNT_ID` | `wrangler.toml` `[vars]` | Cloudflare account id, used for the R2 S3 endpoint |
 | `R2_BUCKET` | `wrangler.toml` `[vars]` (`mentorconnect-files`), `.dev.vars` (`mentorconnect-files-dev`) | bucket for uploads |
@@ -166,7 +181,7 @@ Main tables used now:
 
 | Module | Tables |
 |---|---|
-| user | `users` (with `password_hash`), `student_profiles` |
+| user | `users` (`external_auth_id` = Asgardeo sub, `password_hash` only for local password users), `student_profiles` |
 | mentor | `mentors`, `expertise_categories`, `expertises`, `mentor_expertises`, `availability_slots`, `mentor_verifications` |
 | booking | `bookings`, `mentoring_sessions`, `reviews` |
 | notification | `notifications`, `conversations`, `conversation_participants`, `messages` |
@@ -181,12 +196,28 @@ Important constraints:
 
 ## Authentication
 
-- `POST /api/auth/register` (roles `STUDENT` or `MENTOR` only) and `POST /api/auth/login` return `{ "token": "...", "user": { ... } }`.
-- Send the token as `Authorization: Bearer <token>`.
-- JWT HS256, claims `sub` (user id), `email`, `role`, `exp` (24 hours).
-- Passwords: PBKDF2-SHA256, random salt per user, 100000 iterations (the Workers maximum), stored as `pbkdf2$iterations$salt$hash`.
-- On every protected request the middleware loads the user from D1: unknown user gives 401, an account that is not `ACTIVE` gives 403. A suspended user cannot use an old token.
-- `users.external_auth_id` is set to the new `users.id` on register.
+Login is handled by Asgardeo (organization `teamcylix`, application MentorConnect). The frontend signs the user in with the Asgardeo SDK and sends the access token as `Authorization: Bearer <token>`.
+
+The Worker checks the token:
+
+- RS256 signature with the Asgardeo JWKS (keys cached for 10 minutes, refreshed for an unknown `kid`)
+- `iss` equals `ASGARDEO_ISSUER`, `aud` contains `ASGARDEO_CLIENT_ID`, `exp` and `nbf` (60 seconds clock skew)
+- the token `sub` is looked up in `users.external_auth_id`; the role and account status come from D1, never from the token. An account that is not `ACTIVE` gives 403, so a suspended user cannot use an old token
+
+First login:
+
+1. `GET /api/users/me` returns 404 `User is not registered`. Other protected routes return 403 until the user registers.
+2. The frontend asks for the role and calls `POST /api/users/register` with `{ "role": "STUDENT", "firstName": "Kamal", "lastName": "Perera", "phone": "+94771234567" }` (role `STUDENT` or `MENTOR`, phone optional).
+3. The user is created with `id` and `externalAuthId` = token `sub` and `email` from the token `email` claim (Asgardeo must send it: application > User Attributes). A STUDENT also gets an empty student profile. Answers: `201`, `400` (validation or no `email` claim), `401`, `409` already registered or email taken.
+
+Asgardeo application settings: redirect URLs and allowed origins `http://localhost:5173` and the Netlify URL, access token type JWT, scopes `openid profile email`.
+
+### Local password login (testing only)
+
+With `PASSWORD_LOGIN=true` in `.dev.vars`, `POST /api/auth/register` and `POST /api/auth/login` return `{ "token": "...", "user": { ... } }` and HS256 tokens are accepted. In `wrangler.toml` it is `"false"`, so in production these routes answer 404 and HS256 tokens get 401.
+
+- JWT HS256, claims `sub` (`external_auth_id`), `email`, `role`, `exp` (24 hours).
+- Passwords: PBKDF2-SHA256, random salt per user, 100000 iterations (the Workers maximum), stored as `pbkdf2$iterations$salt$hash`. Asgardeo users have no password and cannot use this login.
 
 Register body:
 
@@ -239,14 +270,15 @@ Status of every endpoint is tracked in `docs/api/API-CHECKS.md`. "Any" means any
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/health` | `{ "status": "UP", "time": "..." }` |
-| POST | `/api/auth/register` | STUDENT or MENTOR |
-| POST | `/api/auth/login` | |
+| POST | `/api/auth/register` | local only (`PASSWORD_LOGIN=true`), STUDENT or MENTOR |
+| POST | `/api/auth/login` | local only (`PASSWORD_LOGIN=true`) |
 
 ### User
 
 | Method | Path | Access |
 |---|---|---|
-| GET | `/api/users/me` | Any |
+| POST | `/api/users/register` | valid Asgardeo token, not yet registered (role STUDENT or MENTOR) |
+| GET | `/api/users/me` | Any (404 when not registered yet) |
 | PUT | `/api/users/me` | Any |
 | POST | `/api/users/me/avatar-upload-url` | Any (body `contentType` image/jpeg, image/png or image/webp) |
 | GET | `/api/students/me/profile` | Student (creates an empty profile if missing) |
@@ -334,9 +366,10 @@ Collections are in `docs/api/postman/edge-api/`:
 | File | Content |
 |---|---|
 | `mentorconnect-edge-api.postman_collection.json` | auth, user, mentor, student profile and upload-url requests |
-| `mentorconnect-edge-api-flow.postman_collection.json` | end-to-end flow: setup, booking, session, notifications, conversations (54 requests) |
+| `mentorconnect-edge-api-flow.postman_collection.json` | end-to-end flow: setup, booking, session, notifications, conversations (56 requests) |
+| `mentorconnect-edge-api-asgardeo.postman_collection.json` | real Asgardeo login (OAuth 2.0 with PKCE): me before register, register, me after |
 
-Steps:
+The first two use the local password login (`PASSWORD_LOGIN=true`). Steps:
 
 1. Apply migrations and run `npm run dev`.
 2. Create the admin user (see [Create a local admin user](#create-a-local-admin-user)).
@@ -349,6 +382,12 @@ With newman (not a project dependency):
 npx newman run docs/api/postman/edge-api/mentorconnect-edge-api-flow.postman_collection.json
 ```
 
+Asgardeo collection (run by hand in Postman, newman cannot open the login page):
+
+1. In the Asgardeo console add `https://oauth.pstmn.io/v1/callback` to the application's Authorized redirect URLs (Protocol tab).
+2. Import the collection, open the collection's Authorization tab and click **Get New Access Token**. Log in with an Asgardeo test user in the browser window, then **Use Token**.
+3. Send the requests in order. Use a test user that is not registered yet.
+
 ## Deployment
 
 Only the developer who owns the Cloudflare account runs these:
@@ -356,7 +395,6 @@ Only the developer who owns the Cloudflare account runs these:
 ```bash
 npx wrangler login
 npx wrangler d1 create mentorconnect-db
-npx wrangler secret put JWT_SECRET
 npx wrangler secret put R2_ACCESS_KEY_ID
 npx wrangler secret put R2_SECRET_ACCESS_KEY
 npx wrangler d1 migrations apply mentorconnect-db --remote
@@ -367,8 +405,9 @@ Before the first deploy:
 
 1. Put the real `database_id` from `d1 create` into `wrangler.toml`.
 2. Add the Netlify URL to `ALLOWED_ORIGINS` in `wrangler.toml` and to the CORS policy of the `mentorconnect-files` bucket.
-3. Confirm the admin email in `migrations/0002_seed.sql` before `migrations apply --remote`. After that, `0001` and `0002` must not be edited; schema or seed changes go into a new `0003_*.sql`.
-4. Use a new `JWT_SECRET` for production, different from `.dev.vars`.
+3. Create the admin user in Asgardeo, then run `node scripts/make-admin-seed.mjs` with that email and its Asgardeo User ID, before `migrations apply --remote`. After that, `0001` and `0002` must not be edited; schema or seed changes go into a new `0003_*.sql`.
+4. Keep `PASSWORD_LOGIN = "false"` in `wrangler.toml`. Production needs no `JWT_SECRET`.
+5. Add the Netlify URL to the Asgardeo application's redirect URLs and allowed origins.
 
 After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 
@@ -389,4 +428,5 @@ After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 - Payments are not implemented: confirming a booking needs no payment.
 - `/internal/*` endpoints from the service specs are not built.
 - Not yet covered by Postman: `/api/health`, session start (success case), session complete, reviews. Reviews cannot be reached in the flow because a review needs a COMPLETED booking and a session can only start 15 minutes before its slot.
-- The spec docs in `docs/api` still describe the Spring microservices (ports 8081 to 8086, `/api/users/register`). The Worker follows them except where this README says otherwise.
+- The spec docs in `docs/api` still describe the Spring microservices (ports 8081 to 8086, the payment-service confirm). The Worker follows them except where this README says otherwise.
+- Postman covers Asgardeo only through the manual Asgardeo collection; automated runs use the local password login.

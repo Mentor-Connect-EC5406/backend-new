@@ -21,8 +21,9 @@ const toResponse = (r: AuthUserRow): UserResponse => ({
   updatedAt: r.updated_at,
 });
 
+// sub is external_auth_id, the column the auth middleware looks users up by
 const issue = async (env: Env, r: AuthUserRow): Promise<AuthResponse> => ({
-  token: await signJwt({ sub: r.id, email: r.email, role: r.role }, env.JWT_SECRET),
+  token: await signJwt({ sub: r.external_auth_id, email: r.email, role: r.role }, env.JWT_SECRET!),
   user: toResponse(r),
 });
 
@@ -54,7 +55,8 @@ export async function register(env: Env, req: RegisterRequest): Promise<AuthResp
 
 export async function login(env: Env, req: LoginRequest): Promise<AuthResponse> {
   const row = await repo.findByEmail(env.DB, req.email);
-  if (!row || !(await verifyPassword(req.password, row.password_hash))) {
+  // Asgardeo users have no password_hash
+  if (!row || !row.password_hash || !(await verifyPassword(req.password, row.password_hash))) {
     throw unauthorized("Invalid email or password");
   }
   if (row.account_status !== "ACTIVE") throw forbidden("Account is not active");

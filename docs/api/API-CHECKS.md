@@ -5,6 +5,7 @@ Built: the route exists in the Worker. Tested: passed in Postman.
 Collections in `docs/api/postman/edge-api/`:
 - `mentorconnect-edge-api.postman_collection.json`: auth, user and mentor endpoints
 - `mentorconnect-edge-api-flow.postman_collection.json`: end-to-end flow (54 requests, 104 assertions passed) covering auth, mentor, booking, notification and conversation endpoints
+- `mentorconnect-edge-api-asgardeo.postman_collection.json`: real Asgardeo login (OAuth 2.0 PKCE, run by hand), covers `POST /api/users/register`
 
 Known gaps:
 - Reviews (`POST /api/bookings/{id}/review`, `GET /api/reviews`) are not tested, because a review needs a COMPLETED booking and the session can only start 15 minutes before the slot, so the flow cannot reach it.
@@ -16,6 +17,7 @@ Known gaps:
 | health | GET | /api/health | ✅ | ⬜ |
 | auth | POST | /api/auth/register | ✅ | ✅ |
 | auth | POST | /api/auth/login | ✅ | ✅ |
+| user | POST | /api/users/register | ✅ | ⬜ |
 | user | GET | /api/users/me | ✅ | ✅ |
 | user | PUT | /api/users/me | ✅ | ✅ |
 | user | GET | /api/users | ✅ | ✅ |
