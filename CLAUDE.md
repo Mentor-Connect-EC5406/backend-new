@@ -20,6 +20,7 @@ src/
 - user/, mentor/, booking/, notification/: each has controller/, service/, repository/, entity/, dto/; file/ serves R2 files
 migrations/: 0001_init.sql (schema), 0002_seed.sql (admin user)
 scripts/: make-admin-seed.mjs (writes 0002_seed.sql)
+test/: Vitest tests run in workerd with @cloudflare/vitest-plugin; vitest.config.ts fakes the Asgardeo JWKS and R2 (test only, never in src/)
 docs/api/: API specs, API-CHECKS.md, postman/edge-api/
 docs/database/schema/: source schemas from the Spring repo
 
@@ -32,7 +33,7 @@ docs/database/schema/: source schemas from the Spring repo
 
 ## Owners
 - Ravindu: package.json, wrangler.toml, tsconfig.json, .gitignore, src/index.ts, src/config, src/exception, src/util, src/user, src/mentor, docs/api/API-CHECKS.md, docs/api/postman
-- Dasuni: migrations/, scripts/, src/booking, src/notification, src/file, the real D1 database_id in wrangler.toml, deploy
+- Dasuni: migrations/, scripts/, src/booking, src/notification, src/file, test/, vitest.config.ts, .github/workflows, the real D1 database_id in wrangler.toml, deploy
 - Never edit another owner's files unless the developer asks
 
 ## API rules
@@ -65,7 +66,7 @@ docs/database/schema/: source schemas from the Spring repo
 - Secrets: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY only, through .dev.vars (local) and wrangler secret put (deploy). Never in code, docs, Postman files or git
 
 ## Workflow for Claude Code
-- One task at a time. After each task: npx tsc --noEmit, npm run dev, test with curl, then stop and list the Postman requests (method, URL, headers, body, expected status for success, 400, 401/403, 404/409)
+- One task at a time. After each task: npm run typecheck, npm test (add or update tests in test/ for every changed endpoint), npm run dev, test with curl, then stop and list the Postman requests (method, URL, headers, body, expected status for success, 400, 401/403, 404/409)
 - After building an endpoint, set Built to ✅ in docs/api/API-CHECKS.md. Never mark the test columns. The developer does that after Postman
 - Postman collection: docs/api/postman/edge-api/mentorconnect-edge-api.postman_collection.json (v2.1, variables baseUrl and token)
 - Never run git, wrangler login, wrangler deploy, wrangler d1 create or any command with --remote. Tell the developer the exact command instead
@@ -76,7 +77,8 @@ docs/database/schema/: source schemas from the Spring repo
 ## Commands
 - npm run dev (local Worker on http://localhost:8787)
 - npx wrangler d1 migrations apply mentorconnect-db --local
-- npx tsc --noEmit
+- npx tsc --noEmit (or npm run typecheck for src and test)
+- npm test
 - Developer only: npx wrangler login, npx wrangler d1 create mentorconnect-db, npx wrangler secret put R2_ACCESS_KEY_ID, npx wrangler secret put R2_SECRET_ACCESS_KEY, npx wrangler d1 migrations apply mentorconnect-db --remote, npm run deploy
 
 ## Git (developers, by hand)

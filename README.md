@@ -16,6 +16,7 @@ The long-term target is the Spring Boot microservices repo (github.com/ravinduan
 - [API conventions](#api-conventions)
 - [Endpoints](#endpoints)
 - [Business rules](#business-rules)
+- [Automated tests](#automated-tests)
 - [Testing with Postman](#testing-with-postman)
 - [Deployment](#deployment)
 - [Team and git workflow](#team-and-git-workflow)
@@ -61,6 +62,9 @@ backend-new/
 │   └── 0002_seed.sql          admin user (Asgardeo User ID and email)
 ├── scripts/
 │   └── make-admin-seed.mjs    writes 0002_seed.sql (asks for the admin's Asgardeo User ID)
+├── test/                      Vitest tests (npm test), helpers and setup
+├── vitest.config.ts           test runtime, fake Asgardeo JWKS and fake R2
+├── .github/workflows/         CI: type check and tests
 ├── docs/
 │   ├── api/                   API specs, API-CHECKS.md, postman/edge-api/
 │   └── database/              ER diagram and source schemas
@@ -341,6 +345,30 @@ Login itself happens in Asgardeo, not in this API.
 - Notifications are created in code (no HTTP) by the booking module when a booking is created, confirmed and cancelled.
 - Names and profile data of a mentor come from the `users` table (a join), not from `mentors`.
 
+## Automated tests
+
+```bash
+npm test
+```
+
+The tests in `test/` run with Vitest and `@cloudflare/vitest-plugin` inside the real Workers runtime (workerd) against a local D1 database. Every test file starts from a fresh database with all migrations applied, so no server, database reset or real tokens are needed.
+
+| File | Covers |
+|---|---|
+| `auth.test.ts` | Asgardeo token checks (expired, wrong audience or issuer, unknown key, `alg: none`, HS256, tampered), first login and register, suspended users, role from the database |
+| `user.test.ts` | `/api/users/me`, student profile, admin user list and status |
+| `mentor.test.ts` | profile, approval gate, verification review, expertise and search, slots |
+| `booking.test.ts` | slot HOLD and pricing, double booking, confirm, cancel, session window, review and rating, expiry cron |
+| `notification.test.ts` | booking notifications, read and read-all, conversations, messages, unread counts |
+| `file.test.ts` | R2 upload urls, key ownership, size limits, `GET /api/files` access rules |
+
+How the outside services are replaced (only in `vitest.config.ts`, never in `src/`):
+
+- **Asgardeo:** the config creates a test RSA key pair and answers the JWKS request with its public key; `test/helpers.ts` signs Asgardeo-style tokens with the private key. The Worker code is the same as in production.
+- **R2:** an in-memory store answers the presigned requests and checks their SigV4 signatures, so a wrong signature or Content-Type fails with 403 like real R2. No real bucket or keys are used.
+
+`npm run typecheck` checks both `src/` and `test/`. GitHub Actions (`.github/workflows/test.yml`) runs the type check and the tests on every pull request and push to `dev` and `main`.
+
 ## Testing with Postman
 
 Collections are in `docs/api/postman/edge-api/`:
@@ -404,7 +432,7 @@ After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 | Developer | Owns |
 |---|---|
 | Ravindu (ravinduanushka) | `package.json`, `wrangler.toml`, `tsconfig.json`, `.gitignore`, `src/index.ts`, `src/config`, `src/exception`, `src/util`, `src/user`, `src/mentor`, `docs/api/API-CHECKS.md`, `docs/api/postman` |
-| Dasuni (dasunisenanayake25) | `migrations/`, `scripts/`, `src/booking`, `src/notification`, `src/file`, the real `database_id`, deploy |
+| Dasuni (dasunisenanayake25) | `migrations/`, `scripts/`, `src/booking`, `src/notification`, `src/file`, `test/`, `vitest.config.ts`, `.github/workflows`, the real `database_id`, deploy |
 
 - Branch `feature/<name>` from `dev`, pull request into `dev`, merge after review.
 - Commit messages are one line: `feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`.
