@@ -1,7 +1,22 @@
-import type { BookingRow, MentorRow, SlotRow } from "../entity/booking.entity";
+import type { BookingDetailRow, BookingRow, MentorRow, SlotRow } from "../entity/booking.entity";
 
 export const findById = (db: D1Database, id: string) =>
   db.prepare("SELECT * FROM bookings WHERE id = ?").bind(id).first<BookingRow>();
+
+// a booking with the names, open meeting link and review flag the UI shows
+const DETAIL_SQL = `SELECT b.*,
+    su.first_name || ' ' || su.last_name AS student_name,
+    mu.first_name || ' ' || mu.last_name AS mentor_name,
+    CASE WHEN s.status IN ('SCHEDULED', 'IN_PROGRESS') THEN s.meeting_url END AS meeting_url,
+    EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS reviewed
+  FROM bookings b
+  LEFT JOIN users su ON su.id = b.student_id
+  LEFT JOIN mentors m ON m.id = b.mentor_id
+  LEFT JOIN users mu ON mu.id = m.user_id
+  LEFT JOIN mentoring_sessions s ON s.booking_id = b.id`;
+
+export const findDetail = (db: D1Database, id: string) =>
+  db.prepare(`${DETAIL_SQL} WHERE b.id = ?`).bind(id).first<BookingDetailRow>();
 
 export const findSlot = (db: D1Database, id: string) =>
   db
@@ -20,13 +35,13 @@ export const findMentorIdByUser = async (db: D1Database, userId: string) =>
 
 const LIST_SQL = {
   student_id: {
-    rows: `SELECT * FROM bookings WHERE student_id = ?1 AND (?2 IS NULL OR status = ?2)
-           ORDER BY created_at DESC LIMIT ?3 OFFSET ?4`,
+    rows: `${DETAIL_SQL} WHERE b.student_id = ?1 AND (?2 IS NULL OR b.status = ?2)
+           ORDER BY b.created_at DESC LIMIT ?3 OFFSET ?4`,
     count: "SELECT COUNT(*) AS total FROM bookings WHERE student_id = ?1 AND (?2 IS NULL OR status = ?2)",
   },
   mentor_id: {
-    rows: `SELECT * FROM bookings WHERE mentor_id = ?1 AND (?2 IS NULL OR status = ?2)
-           ORDER BY created_at DESC LIMIT ?3 OFFSET ?4`,
+    rows: `${DETAIL_SQL} WHERE b.mentor_id = ?1 AND (?2 IS NULL OR b.status = ?2)
+           ORDER BY b.created_at DESC LIMIT ?3 OFFSET ?4`,
     count: "SELECT COUNT(*) AS total FROM bookings WHERE mentor_id = ?1 AND (?2 IS NULL OR status = ?2)",
   },
 };
@@ -44,7 +59,7 @@ export async function listBy(
     db.prepare(LIST_SQL[column].count).bind(ownerId, status),
   ]);
   return {
-    rows: rows!.results as BookingRow[],
+    rows: rows!.results as BookingDetailRow[],
     total: (count!.results[0] as { total: number }).total,
   };
 }

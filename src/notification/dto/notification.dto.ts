@@ -10,7 +10,7 @@ export const startConversationSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
-  content: z.string().trim().min(1, "must not be blank").max(2000),
+  content: z.string().trim().min(1, "must not be blank").max(1000),
   attachmentKey: z.string().max(500).nullable().optional(),
 });
 
@@ -47,6 +47,7 @@ export type NotificationResponse = {
 export type ConversationResponse = {
   id: string;
   participants: string[];
+  with: { id: string; name: string; role: string; profileImageKey: string | null } | null;
   lastMessage: { content: string; sentAt: string } | null;
   unreadCount: number;
 };

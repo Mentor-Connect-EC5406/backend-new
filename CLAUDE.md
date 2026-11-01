@@ -61,7 +61,7 @@ docs/database/schema/: source schemas from the Spring repo
 - POST /api/bookings/{id}/reschedule: only the student, PENDING or CONFIRMED, new AVAILABLE slot of the same mentor with the same length. Old booking RESCHEDULED, new booking keeps the status with rescheduled_from_id
 - Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
 - POST /api/bookings/{id}/session/complete: only the student of the booking, after scheduledStart. Booking and session COMPLETED
-- Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed). Update the mentor rating after a review
+- Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed), comment 20 to 1000 characters. Update the mentor rating after a review
 - Notifications: other modules call the notification service function (no HTTP). Create one on booking created, confirmed and cancelled
 - Admin cannot suspend their own account (409)
 

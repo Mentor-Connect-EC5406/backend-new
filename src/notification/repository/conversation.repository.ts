@@ -40,9 +40,15 @@ const LIST_SQL = `SELECT c.id,
     (SELECT m.content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.sent_at DESC LIMIT 1) AS last_content,
     (SELECT MAX(m.sent_at) FROM messages m WHERE m.conversation_id = c.id) AS last_sent_at,
     (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.sender_id != ?1 AND m.read_at IS NULL) AS unread_count,
-    c.created_at
+    c.created_at,
+    u.id AS with_id,
+    u.first_name || ' ' || u.last_name AS with_name,
+    u.role AS with_role,
+    u.profile_image_key AS with_image_key
   FROM conversations c
-  JOIN conversation_participants me ON me.conversation_id = c.id AND me.user_id = ?1`;
+  JOIN conversation_participants me ON me.conversation_id = c.id AND me.user_id = ?1
+  LEFT JOIN conversation_participants other ON other.conversation_id = c.id AND other.user_id != ?1
+  LEFT JOIN users u ON u.id = other.user_id`;
 
 export const listForUser = async (db: D1Database, userId: string) =>
   (await db.prepare(`${LIST_SQL} ORDER BY COALESCE(last_sent_at, c.created_at) DESC`).bind(userId).all<ConversationListRow>())

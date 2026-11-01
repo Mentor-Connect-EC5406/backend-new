@@ -52,6 +52,22 @@ describe("create booking", () => {
   });
 });
 
+describe("booking details", () => {
+  it("shows names, the meeting link only while open, and the review flag", async () => {
+    const { booking, student, mentor } = await book();
+    expect(booking).toMatchObject({ mentorName: "Mentor User", studentName: "Test User", meetingUrl: null, reviewed: false });
+
+    await api("POST", `/api/bookings/${booking.id}/accept`, { token: mentor.token });
+    const open = await api("GET", `/api/bookings/${booking.id}`, { token: mentor.token });
+    expect(open.body.meetingUrl).toContain(booking.id.slice(0, 8));
+    const list = await api("GET", "/api/bookings", { token: mentor.token });
+    expect(list.body.content[0]).toMatchObject({ id: booking.id, studentName: "Test User", mentorName: "Mentor User" });
+
+    const cancelled = await api("POST", `/api/bookings/${booking.id}/cancel`, { token: student.token });
+    expect(cancelled.body).toMatchObject({ status: "CANCELLED", meetingUrl: null });
+  });
+});
+
 describe("list and read", () => {
   it("shows own bookings to the student and the mentor, and hides them from others", async () => {
     const { booking, student, mentor, admin } = await book();
@@ -235,7 +251,7 @@ describe("session and review", () => {
     const { body: booking } = await api("POST", "/api/bookings", { token: student.token, body: { slotId: early } });
 
     expect((await api("POST", `/api/bookings/${booking.id}/session/start`, { token: mentor.token })).status).toBe(409);
-    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5 } })).status).toBe(409);
+    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5, comment: "Very helpful session, thank you" } })).status).toBe(409);
     await api("POST", `/api/bookings/${booking.id}/accept`, { token: mentor.token });
     expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: student.token })).status).toBe(409);
     expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: mentor.token })).status).toBe(403);
@@ -249,11 +265,14 @@ describe("session and review", () => {
     expect(done.body.status).toBe("COMPLETED");
     expect((await api("GET", `/api/bookings/${booking.id}`, { token: student.token })).body.status).toBe("COMPLETED");
 
-    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 6 } })).status).toBe(400);
-    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: mentor.token, body: { rating: 5 } })).status).toBe(403);
-    const review = await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 4, comment: "Helpful" } });
+    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 6, comment: "Very helpful session, thank you" } })).status).toBe(400);
+    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5 } })).status).toBe(400);
+    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5, comment: "Too short" } })).status).toBe(400);
+    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: mentor.token, body: { rating: 5, comment: "Very helpful session, thank you" } })).status).toBe(403);
+    const review = await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 4, comment: "Very helpful session, thank you" } });
     expect(review.status).toBe(201);
-    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5 } })).status).toBe(409);
+    expect((await api("GET", `/api/bookings/${booking.id}`, { token: student.token })).body.reviewed).toBe(true);
+    expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5, comment: "Very helpful session, thank you" } })).status).toBe(409);
 
     const view = await api("GET", `/api/mentors/${mentorId}`, { token: student.token });
     expect(view.body).toMatchObject({ ratingAvg: 4, ratingCount: 1 });

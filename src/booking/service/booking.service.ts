@@ -53,6 +53,8 @@ export async function loadForParty(db: D1Database, id: string, user: CurrentUser
   return booking;
 }
 
+const detailOf = async (db: D1Database, id: string) => toBookingResponse((await repo.findDetail(db, id))!);
+
 async function mentorUserId(db: D1Database, mentorId: string) {
   return (await repo.findMentor(db, mentorId))?.user_id ?? null;
 }
@@ -106,7 +108,7 @@ export async function createBooking(env: Env, user: CurrentUser, req: CreateBook
     title: "New booking request",
     message: `A student asked for the session on ${formatUtc(row.scheduled_start)}. Accept or decline it`,
   });
-  return toBookingResponse(row);
+  return detailOf(env.DB, row.id);
 }
 
 export async function listBookings(env: Env, user: CurrentUser, q: ListBookingsQuery): Promise<Page<BookingResponse>> {
@@ -122,12 +124,13 @@ export async function listBookings(env: Env, user: CurrentUser, q: ListBookingsQ
 }
 
 export async function getBooking(env: Env, user: CurrentUser, id: string): Promise<BookingResponse> {
-  return toBookingResponse(await loadForParty(env.DB, id, user, ["STUDENT", "MENTOR", "ADMIN"]));
+  await loadForParty(env.DB, id, user, ["STUDENT", "MENTOR", "ADMIN"]);
+  return detailOf(env.DB, id);
 }
 
 export async function acceptBooking(env: Env, user: CurrentUser, id: string): Promise<BookingResponse> {
   const booking = await loadForParty(env.DB, id, user, ["MENTOR"]);
-  if (booking.status === "CONFIRMED") return toBookingResponse(booking);
+  if (booking.status === "CONFIRMED") return detailOf(env.DB, id);
   if (booking.status !== "PENDING") throw conflict("Booking is not PENDING");
 
   const now = nowIso();
@@ -144,7 +147,7 @@ export async function acceptBooking(env: Env, user: CurrentUser, id: string): Pr
       await createNotification(env.DB, { userId: mentorUser, type: "BOOKING_CONFIRMED", title: "New session booked", message });
     }
   }
-  return toBookingResponse(updated);
+  return detailOf(env.DB, id);
 }
 
 export async function declineBooking(
@@ -165,7 +168,7 @@ export async function declineBooking(
     title: "Booking declined",
     message: `The mentor declined the session on ${formatUtc(booking.scheduled_start)}`,
   });
-  return toBookingResponse((await repo.findById(env.DB, id))!);
+  return detailOf(env.DB, id);
 }
 
 // the old booking becomes RESCHEDULED and a new one keeps its status on the new slot
@@ -217,7 +220,7 @@ export async function rescheduleBooking(
   if (mentorUser) {
     await createNotification(env.DB, { userId: mentorUser, type: "BOOKING_RESCHEDULED", title: "Booking rescheduled", message });
   }
-  return toBookingResponse(row);
+  return detailOf(env.DB, row.id);
 }
 
 export async function cancelBooking(
@@ -239,5 +242,5 @@ export async function cancelBooking(
   if (mentorUser) {
     await createNotification(env.DB, { userId: mentorUser, type: "BOOKING_CANCELLED", title: "Booking cancelled", message });
   }
-  return toBookingResponse(updated);
+  return detailOf(env.DB, id);
 }

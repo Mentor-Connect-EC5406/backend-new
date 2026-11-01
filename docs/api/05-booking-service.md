@@ -24,8 +24,12 @@ BookingResponse:
 {
   "id": "d4e5f6a7-0b1c-4d2e-8f3a-4b5c6d7e8f90",
   "studentId": "5f1c0b7e-2d1a-4c55-9a77-1c2f6f3a9b10",
+  "studentName": "Kamal Perera",
   "mentorId": "c1d2e3f4-0a1b-4c2d-8e3f-4a5b6c7d8e9f",
+  "mentorName": "Nimal Silva",
   "slotId": "b7c8d9e0-1234-4abc-8def-0123456789ab",
+  "meetingUrl": null,
+  "reviewed": false,
   "scheduledStart": "2026-11-05T09:00:00.000Z",
   "scheduledEnd": "2026-11-05T10:00:00.000Z",
   "topic": "Career guidance",
@@ -68,7 +72,7 @@ ReviewResponse:
 }
 ```
 
-Names are not included. The frontend gets a mentor's name from `GET /api/mentors/{id}`.
+`meetingUrl` is set only while the session is `SCHEDULED` or `IN_PROGRESS`. `reviewed` is true after the student reviews the booking. ReviewResponse has no names.
 
 ## Bookings
 
@@ -159,7 +163,7 @@ Access: the student of the booking.
 | Field | Rule |
 |---|---|
 | `rating` | required, 1 to 5 |
-| `comment` | optional, up to 1000 characters |
+| `comment` | required, 20 to 1000 characters |
 
 After saving, the service calls mentor-service `POST /internal/mentors/{id}/rating`. Responses: `201` ReviewResponse, `400`, `401`, `403`, `404`, `409` booking is not COMPLETED or already reviewed.
 

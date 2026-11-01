@@ -30,4 +30,8 @@ export type ConversationListRow = {
   last_content: string | null;
   last_sent_at: string | null;
   unread_count: number;
+  with_id: string | null;
+  with_name: string | null;
+  with_role: string | null;
+  with_image_key: string | null;
 };
