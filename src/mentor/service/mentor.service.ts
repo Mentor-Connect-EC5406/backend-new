@@ -1,6 +1,7 @@
 import type { CurrentUser } from "../../config/current-user";
 import { notFound } from "../../exception/api-error";
 import { type Page, toPage } from "../../util/pagination";
+import { EMPTY_PROFILE_EXTRAS, profileExtrasSchema, type ProfileExtras } from "../../util/profile-extras";
 import { nowIso } from "../../util/time";
 import { newId } from "../../util/uuid";
 import type {
@@ -18,6 +19,8 @@ export async function requireMentor(db: D1Database, userId: string): Promise<Men
   return row;
 }
 
+const extrasOf = (r: MentorRow): ProfileExtras => ({ ...EMPTY_PROFILE_EXTRAS, ...(JSON.parse(r.profile_extras) as Partial<ProfileExtras>) });
+
 const toSummary = (r: MentorWithUserRow, exps: MentorExpertiseRow[]): MentorSummary => ({
   id: r.id,
   firstName: r.first_name,
@@ -26,6 +29,10 @@ const toSummary = (r: MentorWithUserRow, exps: MentorExpertiseRow[]): MentorSumm
   title: r.title,
   organization: r.organization,
   industry: r.industry,
+  bio: r.bio,
+  headline: extrasOf(r).headline,
+  location: extrasOf(r).location,
+  skills: JSON.parse(r.skills) as string[],
   experienceYears: r.experience_years,
   hourlyRateCents: r.hourly_rate_cents,
   currency: r.currency,
@@ -46,8 +53,8 @@ const toDetail = (r: MentorWithUserRow, exps: MentorExpertiseRow[]): MentorRespo
   const { expertises: _summaryExpertises, ...base } = toSummary(r, exps);
   return {
     ...base,
+    ...extrasOf(r),
     userId: r.user_id,
-    bio: r.bio,
     verificationStatus: r.verification_status,
     expertises: toExpertiseResponses(exps),
     createdAt: r.created_at,
@@ -72,8 +79,10 @@ export async function upsertMyProfile(
 ): Promise<{ mentor: MentorResponse; created: boolean }> {
   const existing = await repo.findByUserId(db, me.id);
   const now = nowIso();
-  if (existing) await repo.update(db, existing.id, req, now);
-  else await repo.insert(db, newId(), me.id, req, now);
+  // sections that are not sent keep their value
+  const extras = JSON.stringify({ ...(existing ? (JSON.parse(existing.profile_extras) as object) : {}), ...profileExtrasSchema.parse(req) });
+  if (existing) await repo.update(db, existing.id, req, extras, now);
+  else await repo.insert(db, newId(), me.id, req, extras, now);
   const mentor = await getMyProfile(db, me);
   return { mentor, created: !existing };
 }
@@ -90,10 +99,10 @@ export async function search(db: D1Database, q: SearchMentorsQuery): Promise<Pag
   return toPage(content, q, total);
 }
 
-export async function getById(db: D1Database, viewer: CurrentUser, id: string): Promise<MentorResponse> {
+export async function getById(db: D1Database, viewer: CurrentUser | undefined, id: string): Promise<MentorResponse> {
   const row = await repo.findWithUserById(db, id);
   const visible =
-    row && (row.verification_status === "APPROVED" || viewer.role === "ADMIN" || viewer.id === row.user_id);
+    row && (row.verification_status === "APPROVED" || viewer?.role === "ADMIN" || viewer?.id === row.user_id);
   if (!row || !visible) throw notFound("Mentor not found");
   return detailOf(db, row);
 }

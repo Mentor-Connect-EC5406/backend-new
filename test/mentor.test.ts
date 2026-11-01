@@ -28,6 +28,23 @@ describe("mentor profile and approval", () => {
     expect(slots.body).toHaveLength(1);
   });
 
+  it("shows approved mentors without a token and hides pending ones", async () => {
+    const { mentorId, slotId } = await approvedMentor();
+    const student = await registered("STUDENT");
+    expect((await api("GET", `/api/mentors/${mentorId}`)).status).toBe(200);
+    expect((await api("POST", "/api/bookings", { token: student.token, body: { slotId } })).status).toBe(201);
+    const slots = await api("GET", `/api/mentors/${mentorId}/slots`);
+    expect(slots.body).toMatchObject([{ id: slotId, status: "HELD" }]);
+
+    const pending = await registered("MENTOR");
+    const { body: profile } = await api("PUT", "/api/mentors/me", { token: pending.token, body: { title: "E", experienceYears: 1 } });
+    expect(profile.hourlyRateCents).toBe(0);
+    expect((await api("GET", `/api/mentors/${profile.id}`)).status).toBe(404);
+    expect((await api("GET", `/api/mentors/${profile.id}/slots`)).status).toBe(404);
+    expect((await api("GET", `/api/mentors/${profile.id}/reviews`)).status).toBe(404);
+    expect((await api("GET", `/api/mentors/${profile.id}`, { token: pending.token })).status).toBe(200);
+  });
+
   it("needs a profile for mentor routes", async () => {
     const mentor = await registered("MENTOR");
     expect((await api("GET", "/api/mentors/me", { token: mentor.token })).status).toBe(404);
@@ -77,8 +94,45 @@ describe("expertise and search", () => {
     const student = await registered("STUDENT");
     const found = await api("GET", `/api/mentors?expertiseId=${exp.body.id}`, { token: student.token });
     expect(found.body.content.map((m: { id: string }) => m.id)).toContain(mentorId);
-    expect((await api("GET", "/api/mentors", { token: mentor.token })).status).toBe(403);
+    expect((await api("GET", "/api/mentors", { token: mentor.token })).status).toBe(200);
     expect((await api("GET", "/api/expertise-categories", { token: student.token })).status).toBe(200);
+  });
+
+  it("filters and sorts the public search", async () => {
+    const tag = crypto.randomUUID().slice(0, 8);
+    const field = `Field${tag}`;
+    const make = async (rate: number, years: number, extra: object) => {
+      const { mentor, mentorId } = await approvedMentor();
+      await api("PUT", "/api/mentors/me", { token: mentor.token, body: { title: "Engineer", industry: field, experienceYears: years, hourlyRateCents: rate, ...extra } });
+      return mentorId;
+    };
+    const cheap = await make(1000, 2, { skills: [`Rust${tag}`] });
+    const costly = await make(9000, 9, { organization: `Org${tag}` });
+    const ids = async (query: string) =>
+      (await api("GET", `/api/mentors?${query}`)).body.content.map((m: { id: string }) => m.id);
+
+    expect(await ids(`industries=${field}&sort=price`)).toEqual([cheap, costly]);
+    expect(await ids(`industries=${field}&industries=Other${tag}&sort=experience`)).toEqual([costly, cheap]);
+    expect(await ids(`industries=${field}&maxRateCents=5000`)).toEqual([cheap]);
+    expect(await ids(`query=Rust${tag}`)).toEqual([cheap]);
+    expect(await ids(`query=Org${tag}`)).toEqual([costly]);
+    expect((await api("GET", "/api/mentors?sort=name")).status).toBe(400);
+    expect((await api("GET", "/api/mentors?maxRateCents=-1")).status).toBe(400);
+  });
+
+  it("finds a mentor by name and returns the saved sections to everyone", async () => {
+    const { mentor, mentorId } = await approvedMentor();
+    const name = `Nimal${crypto.randomUUID().slice(0, 8)}`;
+    await api("PUT", "/api/users/me", { token: mentor.token, body: { firstName: name, lastName: "Silva" } });
+    const languages = [{ name: "Sinhala", level: "Native" }];
+    await api("PUT", "/api/mentors/me", { token: mentor.token, body: { title: "E", experienceYears: 1, headline: "Backend mentor", languages, skills: ["Java"] } });
+
+    const found = await api("GET", `/api/mentors?query=${name}%20Silva`);
+    expect(found.body.content[0]).toMatchObject({ id: mentorId, headline: "Backend mentor", skills: ["Java"] });
+    const view = await api("GET", `/api/mentors/${mentorId}`);
+    expect(view.body).toMatchObject({ headline: "Backend mentor", languages, experience: [], hourlyRateCents: 6000 });
+    expect((await api("GET", `/api/mentors/${mentorId}`, { token: "bad" })).status).toBe(401);
+    expect((await api("PUT", "/api/mentors/me", { token: mentor.token, body: { title: "E", experienceYears: 51 } })).status).toBe(400);
   });
 });
 

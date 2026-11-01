@@ -17,6 +17,10 @@ MentorSummary (search results):
   "title": "Senior Software Engineer",
   "organization": "WSO2",
   "industry": "Software",
+  "bio": "I help students move into backend roles.",
+  "headline": "Backend mentor",
+  "location": "Colombo",
+  "skills": ["Java", "Spring Boot"],
   "experienceYears": 8,
   "hourlyRateCents": 5000,
   "currency": "LKR",
@@ -26,12 +30,11 @@ MentorSummary (search results):
 }
 ```
 
-MentorResponse (detail and own profile): all MentorSummary fields plus:
+MentorResponse (detail and own profile): all MentorSummary fields plus `links`, `experience`, `education`, `certificates`, `projects` and `languages` (same shapes as the student profile in `03-user-service.md`), and:
 
 ```json
 {
   "userId": "8d2e7a10-5b3c-4d6e-9f01-2a3b4c5d6e7f",
-  "bio": "I help students move into backend roles.",
   "verificationStatus": "APPROVED",
   "expertises": [
     {
@@ -99,24 +102,27 @@ Create or update the own profile. A new profile starts with `verificationStatus`
 | Field | Rule |
 |---|---|
 | `title` | required, 1 to 150 characters |
-| `organization`, `industry`, `bio` | optional text |
-| `experienceYears` | required, 0 or more |
-| `hourlyRateCents` | required, 0 or more |
+| `organization`, `industry` | optional text |
+| `bio` | optional, up to 600 characters |
+| `experienceYears` | required, 0 to 50 |
+| `hourlyRateCents` | optional, 0 or more. Starts at 0, keeps its value when not sent |
+| `skills` | optional, up to 10, keeps its value when not sent |
+| `headline`, `location`, `links`, `experience`, `education`, `certificates`, `projects`, `languages` | optional, same rules as the student profile, keep their value when not sent |
 | `currency` | optional, only `LKR`, default `LKR` |
 
 Responses: `201` MentorResponse (first time), `200` MentorResponse (update), `400`, `401`, `403`.
 
 ### GET /api/mentors
 
-Search APPROVED mentors only. Access: Student.
+Search APPROVED mentors only. Access: Public, no token needed.
 
-Query: `q` (title or organization), `industry`, `expertiseId`, `minRating` (0 to 5), `page`, `size`. Sorted by `ratingAvg` descending. Search by mentor name is not supported, because names live in user-service.
+Query: `query` or `q` (name, title, organization, skills or expertise), repeated `industries`, `industry`, `expertiseId`, `minRating` (0 to 5), `maxRateCents`, `sort` (`rating` default, `price` lowest first, `experience` highest first), `page`, `size`.
 
-Responses: `200` page of MentorSummary, `401`, `403`.
+Responses: `200` page of MentorSummary, `400`.
 
 ### GET /api/mentors/{id}
 
-Access: Any logged-in user can view an APPROVED mentor. A mentor that is not APPROVED is visible only to that mentor and to ADMIN, others get 404.
+Access: Public, no token needed for an APPROVED mentor. A mentor that is not APPROVED is visible only to that mentor and to ADMIN (with a token), others get 404. A bad token gives 401.
 
 Responses: `200` MentorResponse, `401`, `404`.
 
@@ -244,9 +250,9 @@ Access: Mentor. Responses: `204`, `401`, `403`, `404`, `409` slot is HELD or BOO
 
 ### GET /api/mentors/{id}/slots
 
-AVAILABLE future slots of one mentor. Access: Student. Query: `from`, `to` (default: now to 30 days ahead, maximum range 31 days).
+Future slots of one mentor in every status, sorted by start. Only `AVAILABLE` can be booked. Access: Public, no token needed. Query: `from`, `to` (default: now to 30 days ahead, maximum range 31 days).
 
-Responses: `200` array of SlotResponse, `400` range too large, `401`, `403`, `404` mentor not found or not APPROVED.
+Responses: `200` array of SlotResponse, `400` range too large, `404` mentor not found or not APPROVED.
 
 ## Verification
 

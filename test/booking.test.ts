@@ -285,6 +285,13 @@ describe("session and review", () => {
     const list = await api("GET", `/api/reviews?mentorId=${mentorId}`, { token: student.token });
     expect(list.body.content[0].id).toBe(review.body.id);
     expect((await api("GET", "/api/reviews", { token: student.token })).status).toBe(400);
+
+    const open = await api("GET", `/api/mentors/${mentorId}/reviews`);
+    expect(open.status).toBe(200);
+    expect(open.body.content).toEqual([
+      { id: review.body.id, author: "Test User", rating: 4, comment: "Very helpful session, thank you", createdAt: review.body.createdAt },
+    ]);
+    expect((await api("GET", `/api/mentors/${crypto.randomUUID()}/reviews`)).status).toBe(404);
   });
 
   it("lets the student complete without a mentor start, once", async () => {

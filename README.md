@@ -268,7 +268,7 @@ Login itself happens in Asgardeo, not in this API.
 | PUT | `/api/users/me` | Any |
 | POST | `/api/users/me/avatar-upload-url` | Any (body `contentType` image/jpeg, image/png or image/webp) |
 | GET | `/api/students/me/profile` | Student (creates an empty profile if missing) |
-| PUT | `/api/students/me/profile` | Student (partial update, `academicYear` 1 to 10) |
+| PUT | `/api/students/me/profile` | Student (partial update, extended sections, `academicYear` 1 to 10) |
 | GET | `/api/users` | Admin (`role`, `accountStatus`, `q`, `page`, `size`) |
 | PUT | `/api/users/{id}/status` | Admin (`ACTIVE` or `SUSPENDED`, an admin cannot suspend themselves: 409) |
 
@@ -278,8 +278,9 @@ Login itself happens in Asgardeo, not in this API.
 |---|---|---|
 | GET | `/api/mentors/me` | Mentor |
 | PUT | `/api/mentors/me` | Mentor (201 first time, 200 update) |
-| GET | `/api/mentors` | Student (APPROVED only; `q`, `industry`, `expertiseId`, `minRating`, `page`, `size`) |
-| GET | `/api/mentors/{id}` | Any (non APPROVED visible only to the mentor and admin) |
+| GET | `/api/mentors` | Public (APPROVED only; `query`, `industries`, `expertiseId`, `minRating`, `maxRateCents`, `sort`, `page`, `size`) |
+| GET | `/api/mentors/{id}` | Public (non APPROVED visible only to the mentor and admin) |
+| GET | `/api/mentors/{id}/reviews` | Public (APPROVED only, with the student's name) |
 | GET | `/api/expertise-categories` | Any |
 | POST | `/api/expertise-categories` | Admin |
 | POST | `/api/expertise-categories/{id}/expertises` | Admin |
@@ -288,7 +289,7 @@ Login itself happens in Asgardeo, not in this API.
 | GET | `/api/mentors/me/slots` | Mentor (`status`, `from`, `to`) |
 | PUT | `/api/mentors/me/slots/{slotId}` | Mentor (only AVAILABLE or BLOCKED slots) |
 | DELETE | `/api/mentors/me/slots/{slotId}` | Mentor (409 if HELD or BOOKED) |
-| GET | `/api/mentors/{id}/slots` | Student (AVAILABLE future slots, range up to 31 days) |
+| GET | `/api/mentors/{id}/slots` | Public (future slots in every status, range up to 31 days) |
 | POST | `/api/mentors/me/verification-upload-url` | Mentor (body `contentType` application/pdf, image/jpeg or image/png, else 400; 404 if the mentor has no profile) |
 | POST | `/api/mentors/me/verifications` | Mentor (`documentKey` must start with `verifications/{mentorId}/`) |
 | GET | `/api/mentors/me/verifications` | Mentor |

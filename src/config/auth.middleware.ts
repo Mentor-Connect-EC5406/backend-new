@@ -36,7 +36,20 @@ export const authenticate = authenticateUser(() => forbidden("User is not regist
 // GET /api/users/me answers 404 so the frontend knows to call register
 export const authenticateMe = authenticateUser(() => notFound("User is not registered"));
 
-export const requireRole = (...roles: Role[]) =>
+// public route: the caller is known only when a token of an ACTIVE user is sent
+export const authenticateOptional = createMiddleware<AppEnv>(async (c, next) => {
+  const header = c.req.header("Authorization");
+  if (header) {
+    const identity = await identify(c.env, header);
+    const row = await c.env.DB.prepare("SELECT id, email, role FROM users WHERE external_auth_id = ? AND account_status = 'ACTIVE'")
+      .bind(identity.sub)
+      .first<{ id: string; email: string; role: Role }>();
+    if (row) c.set("user", row);
+  }
+  await next();
+});
+
+export const requireRole =(...roles: Role[]) =>
   createMiddleware<AppEnv>(async (c, next) => {
     if (!roles.includes(c.get("user").role)) throw forbidden("Insufficient role");
     await next();

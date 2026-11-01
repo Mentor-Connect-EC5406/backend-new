@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { authenticate, requireRole } from "../../config/auth.middleware";
+import { authenticate, authenticateOptional, requireRole } from "../../config/auth.middleware";
 import type { AppEnv } from "../../config/env";
 import { parse, parseBody } from "../../util/validate";
 import { searchMentorsQuerySchema, upsertMentorSchema } from "../dto/mentor.dto";
@@ -20,8 +20,8 @@ mentorController.put("/api/mentors/me", authenticate, requireRole("MENTOR"), asy
   return c.json(mentor, created ? 201 : 200);
 });
 
-mentorController.get("/api/mentors", authenticate, requireRole("STUDENT"), async (c) => {
-  const query = parse(searchMentorsQuerySchema, c.req.query());
+mentorController.get("/api/mentors", async (c) => {
+  const query = parse(searchMentorsQuerySchema, { ...c.req.query(), industries: c.req.queries("industries") });
   return c.json(await service.search(c.env.DB, query));
 });
 
@@ -30,6 +30,6 @@ mentorController.route("/", expertiseController);
 mentorController.route("/", slotController);
 mentorController.route("/", verificationController);
 
-mentorController.get("/api/mentors/:id", authenticate, async (c) => {
+mentorController.get("/api/mentors/:id", authenticateOptional, async (c) => {
   return c.json(await service.getById(c.env.DB, c.get("user"), c.req.param("id")));
 });

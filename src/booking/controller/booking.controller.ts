@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { authenticate, requireRole } from "../../config/auth.middleware";
 import type { AppEnv } from "../../config/env";
+import { pageQuerySchema } from "../../util/pagination";
 import { parse, parseBody } from "../../util/validate";
 import {
   cancelBookingSchema,
@@ -68,6 +69,11 @@ bookingController.post("/api/bookings/:id/session/complete", authenticate, async
 bookingController.post("/api/bookings/:id/review", authenticate, async (c) => {
   const body = await parseBody(c.req.raw, createReviewSchema);
   return c.json(await reviews.createReview(c.env, c.get("user"), c.req.param("id"), body), 201);
+});
+
+bookingController.get("/api/mentors/:id/reviews", async (c) => {
+  const q = parse(pageQuerySchema, c.req.query());
+  return c.json(await reviews.listMentorReviews(c.env, c.req.param("id"), q), 200);
 });
 
 bookingController.get("/api/reviews", authenticate, async (c) => {

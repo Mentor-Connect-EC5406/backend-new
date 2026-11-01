@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { pageQuerySchema } from "../../util/pagination";
+import { profileExtrasSchema, skillsSchema, type ProfileExtras } from "../../util/profile-extras";
 import type { SlotStatus, VerificationStatus } from "../entity/mentor.entity";
 
 const instant = z.iso
@@ -19,21 +20,26 @@ const timezone = z.string().refine(
 );
 
 // profile
-export const upsertMentorSchema = z.object({
+export const upsertMentorSchema = profileExtrasSchema.extend({
   title: z.string().trim().min(1, "must not be blank").max(150),
   organization: z.string().nullish(),
   industry: z.string().nullish(),
-  bio: z.string().nullish(),
-  experienceYears: z.number().int().min(0, "must be 0 or more"),
-  hourlyRateCents: z.number().int().min(0, "must be 0 or more"),
+  bio: z.string().max(600).nullish(),
+  experienceYears: z.number().int().min(0, "must be 0 to 50").max(50, "must be 0 to 50"),
+  hourlyRateCents: z.number().int().min(0, "must be 0 or more").optional(),
   currency: z.literal("LKR", { error: "must be LKR" }).optional(),
+  skills: skillsSchema.optional(),
 });
 
 export const searchMentorsQuerySchema = pageQuerySchema.extend({
+  query: z.string().trim().min(1).optional(),
   q: z.string().trim().min(1).optional(),
+  industries: z.array(z.string().trim().min(1)).optional(),
   industry: z.string().trim().min(1).optional(),
   expertiseId: z.string().min(1).optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
+  maxRateCents: z.coerce.number().int().min(0).optional(),
+  sort: z.enum(["rating", "price", "experience"], { error: "must be rating, price or experience" }).optional(),
 });
 
 export type UpsertMentorRequest = z.infer<typeof upsertMentorSchema>;
@@ -134,6 +140,10 @@ export type MentorSummary = {
   title: string | null;
   organization: string | null;
   industry: string | null;
+  bio: string | null;
+  headline: string;
+  location: string;
+  skills: string[];
   experienceYears: number;
   hourlyRateCents: number;
   currency: string;
@@ -149,9 +159,8 @@ export type MentorExpertiseResponse = {
   proficiency: string;
 };
 
-export type MentorResponse = Omit<MentorSummary, "expertises"> & {
+export type MentorResponse = Omit<MentorSummary, "expertises"> & ProfileExtras & {
   userId: string;
-  bio: string | null;
   verificationStatus: VerificationStatus;
   expertises: MentorExpertiseResponse[];
   createdAt: string;

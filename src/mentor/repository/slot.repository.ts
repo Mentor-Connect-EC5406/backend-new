@@ -62,11 +62,11 @@ export async function listOwn(db: D1Database, mentorId: string, f: { status?: st
   return res.results;
 }
 
-export async function listAvailable(db: D1Database, mentorId: string, from: string, to: string) {
+export async function listPublic(db: D1Database, mentorId: string, from: string, to: string) {
   const res = await db
     .prepare(
       `SELECT * FROM availability_slots
-       WHERE mentor_id = ? AND status = 'AVAILABLE' AND start_time >= ? AND start_time <= ?
+       WHERE mentor_id = ? AND start_time >= ? AND start_time <= ?
        ORDER BY start_time`,
     )
     .bind(mentorId, from, to)

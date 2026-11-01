@@ -167,6 +167,22 @@ Access: the student of the booking.
 
 After saving, the service calls mentor-service `POST /internal/mentors/{id}/rating`. Responses: `201` ReviewResponse, `400`, `401`, `403`, `404`, `409` booking is not COMPLETED or already reviewed.
 
+### GET /api/mentors/{id}/reviews
+
+Reviews of one APPROVED mentor with the student's name, newest first. Access: Public, no token needed.
+
+Query: `page`, `size`. Responses: `200` page, `404` mentor not found or not APPROVED.
+
+```json
+{
+  "id": "9f8e7d6c-5b4a-4392-8170-6f5e4d3c2b1a",
+  "author": "Kamal Perera",
+  "rating": 5,
+  "comment": "Very helpful session",
+  "createdAt": "2026-11-05T11:00:00.000Z"
+}
+```
+
 ### GET /api/reviews
 
 Reviews of one mentor, newest first. Access: Any.

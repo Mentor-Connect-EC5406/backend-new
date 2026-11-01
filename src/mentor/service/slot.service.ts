@@ -94,5 +94,5 @@ export async function listPublicSlots(db: D1Database, mentorId: string, q: Publi
 
   // never list slots that already started
   const start = from > nowIso() ? from : nowIso();
-  return (await repo.listAvailable(db, mentorId, start, to)).map(toResponse);
+  return (await repo.listPublic(db, mentorId, start, to)).map(toResponse);
 }

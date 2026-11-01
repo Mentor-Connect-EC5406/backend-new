@@ -64,3 +64,5 @@ export type MentorRow = {
   currency: string;
   verification_status: "PENDING" | "APPROVED" | "REJECTED";
 };
+
+export type MentorReviewRow = ReviewRow & { author: string | null };
