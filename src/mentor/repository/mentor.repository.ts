@@ -81,6 +81,38 @@ export async function search(db: D1Database, f: SearchMentorsQuery) {
   return { rows: rows.results, total: total?.n ?? 0 };
 }
 
+// saving twice is not an error
+export async function saveForStudent(db: D1Database, studentId: string, mentorId: string, now: string) {
+  await db
+    .prepare("INSERT OR IGNORE INTO saved_mentors (student_id, mentor_id, created_at) VALUES (?, ?, ?)")
+    .bind(studentId, mentorId, now)
+    .run();
+}
+
+export async function unsaveForStudent(db: D1Database, studentId: string, mentorId: string) {
+  await db.prepare("DELETE FROM saved_mentors WHERE student_id = ? AND mentor_id = ?").bind(studentId, mentorId).run();
+}
+
+// a saved mentor stays hidden while not APPROVED
+export async function listSaved(db: D1Database, studentId: string, limit: number, offset: number) {
+  const total = await db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM saved_mentors s JOIN mentors m ON m.id = s.mentor_id
+       WHERE s.student_id = ? AND m.verification_status = 'APPROVED'`,
+    )
+    .bind(studentId)
+    .first<{ n: number }>();
+  const rows = await db
+    .prepare(
+      `${WITH_USER} JOIN saved_mentors s ON s.mentor_id = m.id
+       WHERE s.student_id = ? AND m.verification_status = 'APPROVED'
+       ORDER BY s.created_at DESC, m.id LIMIT ? OFFSET ?`,
+    )
+    .bind(studentId, limit, offset)
+    .all<MentorWithUserRow>();
+  return { rows: rows.results, total: total?.n ?? 0 };
+}
+
 export async function findExpertises(db: D1Database, mentorIds: string[]): Promise<MentorExpertiseRow[]> {
   if (mentorIds.length === 0) return [];
   const marks = mentorIds.map(() => "?").join(",");

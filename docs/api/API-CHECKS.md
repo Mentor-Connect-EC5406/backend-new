@@ -66,3 +66,16 @@ Known gaps:
 | notification | PUT | /api/conversations/{id}/read | ✅ | ✅ |
 | notification | POST | /api/conversations/{id}/attachment-upload-url | ✅ | ⬜ |
 | file | GET | /api/files/{key} | ✅ | ⬜ |
+| mentor | GET | /api/students/me/saved-mentors | ✅ | ⬜ |
+| mentor | PUT | /api/students/me/saved-mentors/{id} | ✅ | ⬜ |
+| mentor | DELETE | /api/students/me/saved-mentors/{id} | ✅ | ⬜ |
+| mentorship | GET | /api/goals | ✅ | ⬜ |
+| mentorship | POST | /api/goals | ✅ | ⬜ |
+| mentorship | PATCH | /api/goals/{id} | ✅ | ⬜ |
+| mentorship | DELETE | /api/goals/{id} | ✅ | ⬜ |
+| analytic | POST | /api/reports | ✅ | ⬜ |
+| analytic | GET | /api/reports/mine | ✅ | ⬜ |
+| analytic | GET | /api/reports | ✅ | ⬜ |
+| analytic | GET | /api/reports/{id} | ✅ | ⬜ |
+| analytic | PUT | /api/reports/{id} | ✅ | ⬜ |
+| analytic | GET | /api/admin/stats | ✅ | ⬜ |

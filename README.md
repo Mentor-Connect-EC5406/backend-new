@@ -333,6 +333,29 @@ Login itself happens in Asgardeo, not in this API.
 |---|---|---|
 | GET | `/api/files/{key}` | avatars: no token; verifications: Admin or the owning mentor; attachments: participants |
 
+### Saved mentors and goals
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/students/me/saved-mentors` | Student |
+| PUT | `/api/students/me/saved-mentors/{id}` | Student (saving twice is not an error) |
+| DELETE | `/api/students/me/saved-mentors/{id}` | Student |
+| GET | `/api/goals` | Student (own goals) |
+| POST | `/api/goals` | Student |
+| PATCH | `/api/goals/{id}` | Student (only the fields sent) |
+| DELETE | `/api/goals/{id}` | Student |
+
+### Reports and admin stats
+
+| Method | Path | Access |
+|---|---|---|
+| POST | `/api/reports` | Any |
+| GET | `/api/reports/mine` | Any |
+| GET | `/api/reports` | Admin (`status`, `page`, `size`) |
+| GET | `/api/reports/{id}` | Admin |
+| PUT | `/api/reports/{id}` | Admin (`resolution` required to close) |
+| GET | `/api/admin/stats` | Admin |
+
 ## Business rules
 
 - Roles: `STUDENT`, `MENTOR`, `ADMIN`. A `SUSPENDED` account gets 403 on login and on every protected route.
