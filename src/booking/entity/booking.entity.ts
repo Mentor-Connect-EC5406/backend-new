@@ -63,6 +63,7 @@ export type MentorRow = {
   hourly_rate_cents: number;
   currency: string;
   verification_status: "PENDING" | "APPROVED" | "REJECTED";
+  account_status: string;
 };
 
 export type MentorReviewRow = ReviewRow & { author: string | null };

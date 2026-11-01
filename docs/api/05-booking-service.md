@@ -92,7 +92,7 @@ Access: Student.
 | `slotId` | required, UUID |
 | `topic` | optional, up to 200 characters |
 
-Responses: `201` BookingResponse (status `PENDING`), `400`, `401`, `403` not a STUDENT or account not ACTIVE, `404` slot not found, `409` slot is not available or the mentor is not APPROVED.
+Responses: `201` BookingResponse (status `PENDING`), `400`, `401`, `403` not a STUDENT or account not ACTIVE, `404` slot not found, `409` slot is not available, or the mentor is not APPROVED or not ACTIVE.
 
 ### GET /api/bookings
 
@@ -169,9 +169,9 @@ After saving, the service calls mentor-service `POST /internal/mentors/{id}/rati
 
 ### GET /api/mentors/{id}/reviews
 
-Reviews of one APPROVED mentor with the student's name, newest first. Access: Public, no token needed.
+Reviews of one APPROVED and ACTIVE mentor with the student's name, newest first. Access: Public, no token needed.
 
-Query: `page`, `size`. Responses: `200` page, `404` mentor not found or not APPROVED.
+Query: `page`, `size`. Responses: `200` page, `404` mentor not found, not APPROVED or not ACTIVE.
 
 ```json
 {

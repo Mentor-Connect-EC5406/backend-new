@@ -55,7 +55,7 @@ docs/database/schema/: source schemas from the Spring repo
 ## Business rules
 - Roles: STUDENT, MENTOR, ADMIN
 - Currency is LKR only. Slots are exactly 60 minutes and cannot overlap for one mentor (409)
-- Public without a token: GET /api/mentors, /api/mentors/{id}, /api/mentors/{id}/slots, /api/mentors/{id}/reviews. Only APPROVED mentors are shown
+- Public without a token: GET /api/mentors, /api/mentors/{id}, /api/mentors/{id}/slots, /api/mentors/{id}/reviews. Only APPROVED mentors with an ACTIVE account are shown or bookable
 - Extended profile sections are JSON in profile_extras (mentors, student_profiles). Sections not sent keep their value
 - Double booking: unique index uq_bookings_active_slot and slot status. Create the booking and set the slot to HELD in one db.batch()
 - The booking module may update availability_slots.status (HELD, BOOKED, AVAILABLE)

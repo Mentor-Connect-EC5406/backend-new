@@ -19,7 +19,9 @@ export async function requireMentor(db: D1Database, userId: string): Promise<Men
   return row;
 }
 
-const extrasOf = (r: MentorRow): ProfileExtras => ({ ...EMPTY_PROFILE_EXTRAS, ...(JSON.parse(r.profile_extras) as Partial<ProfileExtras>) });
+export const isPublicMentor = (r: MentorWithUserRow) => r.verification_status === "APPROVED" && r.account_status === "ACTIVE";
+
+const extrasOf =(r: MentorRow): ProfileExtras => ({ ...EMPTY_PROFILE_EXTRAS, ...(JSON.parse(r.profile_extras) as Partial<ProfileExtras>) });
 
 const toSummary = (r: MentorWithUserRow, exps: MentorExpertiseRow[]): MentorSummary => ({
   id: r.id,
@@ -109,7 +111,7 @@ export async function listSaved(db: D1Database, me: CurrentUser, q: PageQuery): 
 
 export async function saveMentor(db: D1Database, me: CurrentUser, mentorId: string): Promise<void> {
   const mentor = await repo.findWithUserById(db, mentorId);
-  if (!mentor || mentor.verification_status !== "APPROVED") throw notFound("Mentor not found");
+  if (!mentor || !isPublicMentor(mentor)) throw notFound("Mentor not found");
   await repo.saveForStudent(db, me.id, mentorId, nowIso());
 }
 
@@ -120,7 +122,7 @@ export async function unsaveMentor(db: D1Database, me: CurrentUser, mentorId: st
 export async function getById(db: D1Database, viewer: CurrentUser | undefined, id: string): Promise<MentorResponse> {
   const row = await repo.findWithUserById(db, id);
   const visible =
-    row && (row.verification_status === "APPROVED" || viewer?.role === "ADMIN" || viewer?.id === row.user_id);
+    row && (isPublicMentor(row) || viewer?.role === "ADMIN" || viewer?.id === row.user_id);
   if (!row || !visible) throw notFound("Mentor not found");
   return detailOf(db, row);
 }

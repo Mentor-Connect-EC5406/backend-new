@@ -81,7 +81,8 @@ export const adminStats = (db: D1Database) =>
     .prepare(
       `SELECT
          (SELECT COUNT(*) FROM users) AS users,
-         (SELECT COUNT(*) FROM mentors WHERE verification_status = 'APPROVED') AS mentors,
+         (SELECT COUNT(*) FROM mentors m JOIN users u ON u.id = m.user_id
+          WHERE m.verification_status = 'APPROVED' AND u.account_status = 'ACTIVE') AS mentors,
          (SELECT COUNT(*) FROM bookings WHERE status <> 'RESCHEDULED') AS bookings,
          (SELECT COALESCE(SUM(amount_cents), 0) FROM payments WHERE status = 'PAID') AS revenue_cents`,
     )
