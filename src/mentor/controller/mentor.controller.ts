@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { authenticate, authenticateOptional, requireRole } from "../../config/auth.middleware";
 import type { AppEnv } from "../../config/env";
+import { pageQuerySchema } from "../../util/pagination";
 import { parse, parseBody } from "../../util/validate";
 import { searchMentorsQuerySchema, upsertMentorSchema } from "../dto/mentor.dto";
 import * as service from "../service/mentor.service";
@@ -23,6 +24,21 @@ mentorController.put("/api/mentors/me", authenticate, requireRole("MENTOR"), asy
 mentorController.get("/api/mentors", async (c) => {
   const query = parse(searchMentorsQuerySchema, { ...c.req.query(), industries: c.req.queries("industries") });
   return c.json(await service.search(c.env.DB, query));
+});
+
+mentorController.get("/api/students/me/saved-mentors", authenticate, requireRole("STUDENT"), async (c) => {
+  const query = parse(pageQuerySchema, c.req.query());
+  return c.json(await service.listSaved(c.env.DB, c.get("user"), query));
+});
+
+mentorController.put("/api/students/me/saved-mentors/:id", authenticate, requireRole("STUDENT"), async (c) => {
+  await service.saveMentor(c.env.DB, c.get("user"), c.req.param("id"));
+  return c.body(null, 204);
+});
+
+mentorController.delete("/api/students/me/saved-mentors/:id", authenticate, requireRole("STUDENT"), async (c) => {
+  await service.unsaveMentor(c.env.DB, c.get("user"), c.req.param("id"));
+  return c.body(null, 204);
 });
 
 // /api/mentors/me/* routes are registered before /api/mentors/:id

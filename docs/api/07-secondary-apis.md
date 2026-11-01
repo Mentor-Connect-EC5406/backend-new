@@ -263,6 +263,8 @@ ReportResponse:
 }
 ```
 
+The Worker also returns `reporterName` and `reportedUserName`.
+
 | Method | Path | Purpose | Access |
 |---|---|---|---|
 | GET | `/api/recommendations` | Top mentors for me (query: `limit`, default 10, max 20) | Student |
@@ -277,12 +279,51 @@ ReportResponse:
 ```json
 { "reportedUserId": "8d2e7a10-...", "bookingId": "d4e5f6a7-...", "category": "NO_SHOW", "description": "Mentor did not join" }
 ```
-`POST /api/reports`: `category` is `NO_SHOW`, `INAPPROPRIATE_BEHAVIOR`, `PAYMENT_ISSUE` or `OTHER`. `description` is required, up to 2000 characters. `reportedUserId` and `bookingId` are optional. `201` ReportResponse.
+`POST /api/reports`: `category` is `NO_SHOW`, `INAPPROPRIATE_BEHAVIOR`, `PAYMENT_ISSUE` or `OTHER`. `description` is required, up to 2000 characters. `reportedUserId` and `bookingId` are optional. `201` ReportResponse, `400` reporting yourself, `404` user not found or caller is not a party of the booking.
 
 ```json
 { "status": "RESOLVED", "assignedAdminId": "9a8b7c6d-...", "resolution": "Warned the mentor" }
 ```
-`PUT /api/reports/{id}`: `status` is `UNDER_REVIEW`, `RESOLVED` or `DISMISSED`. `resolution` is required for `RESOLVED` and `DISMISSED`. `200` ReportResponse, `409` report is already closed.
+`PUT /api/reports/{id}`: `status` is `UNDER_REVIEW`, `RESOLVED` or `DISMISSED`. `resolution` is required for `RESOLVED` and `DISMISSED`. `assignedAdminId` is optional, it defaults to the caller and must be an admin. `200` ReportResponse, `409` report is already closed.
+
+`GET /api/admin/stats`: current totals for the admin overview. Access: Admin. `bookings` leaves out `RESCHEDULED` rows, `revenueCents` counts `PAID` payments, so it is 0 until payments are built. Response `200`:
+
+```json
+{ "users": 120, "mentors": 25, "bookings": 85, "revenueCents": 0, "currency": "LKR" }
+```
+
+## Student saved mentors and goals
+
+| Method | Path | Purpose | Access |
+|---|---|---|---|
+| GET | `/api/students/me/saved-mentors` | Page of MentorSummary, newest saved first, APPROVED mentors only | Student |
+| PUT | `/api/students/me/saved-mentors/{mentorId}` | Save. Saving twice is not an error. `204`, `404` mentor not found or not APPROVED | Student |
+| DELETE | `/api/students/me/saved-mentors/{mentorId}` | Remove. `204` also when it was not saved | Student |
+| GET | `/api/goals` | Page of own GoalResponse, newest first | Student |
+| POST | `/api/goals` | Add a personal goal. `201` | Student |
+| PATCH | `/api/goals/{id}` | Change only the fields sent. `200`, `404` not found or another student's goal | Student |
+| DELETE | `/api/goals/{id}` | `204`, `404` | Student |
+
+These are personal career goals, separate from the program goals of mentorship-service.
+
+GoalResponse:
+
+```json
+{
+  "id": "22222222-3333-4444-8555-666666666666",
+  "title": "Get a backend internship",
+  "targetDate": "2027-06-30",
+  "progress": 40,
+  "createdAt": "2026-11-01T10:00:00.000Z",
+  "updatedAt": "2026-11-01T10:00:00.000Z"
+}
+```
+
+| Field | Rule |
+|---|---|
+| `title` | required on POST, 1 to 100 characters |
+| `targetDate` | optional, `YYYY-MM-DD` or null |
+| `progress` | optional, whole number 0 to 100, starts at 0 |
 
 `GET /api/admin/analytics` response `200`:
 

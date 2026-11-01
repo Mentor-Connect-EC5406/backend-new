@@ -1,6 +1,6 @@
 import type { CurrentUser } from "../../config/current-user";
 import { notFound } from "../../exception/api-error";
-import { type Page, toPage } from "../../util/pagination";
+import { offsetOf, type Page, type PageQuery, toPage } from "../../util/pagination";
 import { EMPTY_PROFILE_EXTRAS, profileExtrasSchema, type ProfileExtras } from "../../util/profile-extras";
 import { nowIso } from "../../util/time";
 import { newId } from "../../util/uuid";
@@ -87,16 +87,34 @@ export async function upsertMyProfile(
   return { mentor, created: !existing };
 }
 
-export async function search(db: D1Database, q: SearchMentorsQuery): Promise<Page<MentorSummary>> {
-  const { rows, total } = await repo.search(db, q);
+async function summariesOf(db: D1Database, rows: MentorWithUserRow[]): Promise<MentorSummary[]> {
   const exps = await repo.findExpertises(db, rows.map((r) => r.id));
-  const content = rows.map((r) =>
+  return rows.map((r) =>
     toSummary(
       r,
       exps.filter((e) => e.mentor_id === r.id),
     ),
   );
-  return toPage(content, q, total);
+}
+
+export async function search(db: D1Database, q: SearchMentorsQuery): Promise<Page<MentorSummary>> {
+  const { rows, total } = await repo.search(db, q);
+  return toPage(await summariesOf(db, rows), q, total);
+}
+
+export async function listSaved(db: D1Database, me: CurrentUser, q: PageQuery): Promise<Page<MentorSummary>> {
+  const { rows, total } = await repo.listSaved(db, me.id, q.size, offsetOf(q));
+  return toPage(await summariesOf(db, rows), q, total);
+}
+
+export async function saveMentor(db: D1Database, me: CurrentUser, mentorId: string): Promise<void> {
+  const mentor = await repo.findWithUserById(db, mentorId);
+  if (!mentor || mentor.verification_status !== "APPROVED") throw notFound("Mentor not found");
+  await repo.saveForStudent(db, me.id, mentorId, nowIso());
+}
+
+export async function unsaveMentor(db: D1Database, me: CurrentUser, mentorId: string): Promise<void> {
+  await repo.unsaveForStudent(db, me.id, mentorId);
 }
 
 export async function getById(db: D1Database, viewer: CurrentUser | undefined, id: string): Promise<MentorResponse> {

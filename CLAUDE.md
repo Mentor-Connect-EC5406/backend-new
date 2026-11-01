@@ -9,7 +9,8 @@
 
 ## Sprint 2 scope
 - In: auth, user, mentor, booking, notification (incl. conversations and messages), admin user management and verification review
-- Out (later): payments and Lemon Squeezy, R2 uploads (upload-url endpoints return `{ "uploadUrl": null, "key": null }`), real email, analytics, mentorship programs
+- Also in: saved mentors, personal student goals (src/mentorship), reports and GET /api/admin/stats (src/analytic)
+- Out (later): payments and Lemon Squeezy, real email, /api/admin/analytics, mentorship programs
 
 ## Folder structure
 src/
