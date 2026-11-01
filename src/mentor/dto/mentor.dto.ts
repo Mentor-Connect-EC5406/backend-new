@@ -26,11 +26,7 @@ export const upsertMentorSchema = z.object({
   bio: z.string().nullish(),
   experienceYears: z.number().int().min(0, "must be 0 or more"),
   hourlyRateCents: z.number().int().min(0, "must be 0 or more"),
-  currency: z
-    .string()
-    .regex(/^[A-Za-z]{3}$/, "must be 3 letters")
-    .transform((s) => s.toUpperCase())
-    .optional(),
+  currency: z.literal("LKR", { error: "must be LKR" }).optional(),
 });
 
 export const searchMentorsQuerySchema = pageQuerySchema.extend({
@@ -70,12 +66,14 @@ export type CreateExpertiseRequest = z.infer<typeof createExpertiseSchema>;
 export type ReplaceExpertisesRequest = z.infer<typeof replaceExpertisesSchema>;
 
 // slots
+const SESSION_MS = 60 * 60 * 1000;
+
 const slotTimes = (v: { startTime: string; endTime: string }, ctx: z.RefinementCtx) => {
   if (new Date(v.startTime).getTime() <= Date.now()) {
     ctx.addIssue({ code: "custom", path: ["startTime"], message: "must be in the future" });
   }
-  if (v.endTime <= v.startTime) {
-    ctx.addIssue({ code: "custom", path: ["endTime"], message: "must be after startTime" });
+  if (new Date(v.endTime).getTime() - new Date(v.startTime).getTime() !== SESSION_MS) {
+    ctx.addIssue({ code: "custom", path: ["endTime"], message: "must be 60 minutes after startTime" });
   }
 };
 

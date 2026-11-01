@@ -34,7 +34,7 @@ BookingResponse:
   "scheduledEnd": "2026-11-05T10:00:00.000Z",
   "topic": "Career guidance",
   "priceCents": 5000,
-  "currency": "USD",
+  "currency": "LKR",
   "status": "PENDING",
   "cancellationReason": null,
   "rescheduledFromId": null,

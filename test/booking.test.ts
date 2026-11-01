@@ -14,18 +14,23 @@ async function book() {
   return { ...setup, student, booking: res.body };
 }
 
+// the API only makes 60 minute slots, older rows can be shorter
+const shorten = (id: string) =>
+  env.DB.prepare("UPDATE availability_slots SET end_time = strftime('%Y-%m-%dT%H:%M:%fZ', start_time, '+30 minutes') WHERE id = ?").bind(id).run();
+
 describe("create booking", () => {
   it("holds the slot, prices by length and expires in 24 hours", async () => {
     const { booking, slotId } = await book();
-    expect(booking).toMatchObject({ status: "PENDING", priceCents: 6000, currency: "USD", topic: "Career guidance" });
+    expect(booking).toMatchObject({ status: "PENDING", priceCents: 6000, currency: "LKR", topic: "Career guidance" });
     expect(Date.parse(booking.expiresAt) - Date.parse(booking.createdAt)).toBe(24 * HOUR);
     expect(await slotStatus(slotId)).toBe("HELD");
   });
 
-  it("prices a 30 minute slot at half the hourly rate", async () => {
+  it("prices an older 30 minute slot at half the hourly rate", async () => {
     const { mentor } = await approvedMentor(5000);
     const student = await registered("STUDENT");
-    const slotId = await slot(mentor, 72 * HOUR, 30);
+    const slotId = await slot(mentor, 72 * HOUR);
+    await shorten(slotId);
     expect((await api("POST", "/api/bookings", { token: student.token, body: { slotId } })).body.priceCents).toBe(2500);
   });
 
@@ -233,7 +238,8 @@ describe("reschedule", () => {
 
     const otherMentor = await approvedMentor();
     expect((await api("POST", path, { token: student.token, body: { slotId: otherMentor.slotId } })).status).toBe(409);
-    const shorter = await slot(mentor, 96 * HOUR, 30);
+    const shorter = await slot(mentor, 96 * HOUR);
+    await shorten(shorter);
     expect((await api("POST", path, { token: student.token, body: { slotId: shorter } })).status).toBe(409);
     expect((await api("POST", path, { token: student.token, body: { slotId } })).status).toBe(409);
     const taken = await slot(mentor, 120 * HOUR);

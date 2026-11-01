@@ -19,7 +19,7 @@ export async function insert(db: D1Database, id: string, userId: string, r: Upse
       `INSERT INTO mentors (id, user_id, title, organization, industry, bio, experience_years, hourly_rate_cents, currency, verification_status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
     )
-    .bind(id, userId, r.title, r.organization ?? null, r.industry ?? null, r.bio ?? null, r.experienceYears, r.hourlyRateCents, r.currency ?? "USD", now, now)
+    .bind(id, userId, r.title, r.organization ?? null, r.industry ?? null, r.bio ?? null, r.experienceYears, r.hourlyRateCents, r.currency ?? "LKR", now, now)
     .run();
 }
 

@@ -83,9 +83,9 @@ export const iso = (msFromNow: number) => new Date(Date.now() + msFromNow).toISO
 // whole seconds, as the slot DTO normalises them
 const at = (msFromNow: number) => new Date(Math.floor((Date.now() + msFromNow) / 1000) * 1000).toISOString();
 
-export async function slot(mentor: TestUser, startInMs: number, minutes = 60): Promise<string> {
+export async function slot(mentor: TestUser, startInMs: number): Promise<string> {
   const start = at(startInMs);
-  const end = new Date(Date.parse(start) + minutes * 60_000).toISOString();
+  const end = new Date(Date.parse(start) + HOUR).toISOString();
   const res = await api("POST", "/api/mentors/me/slots", { token: mentor.token, body: { startTime: start, endTime: end } });
   if (res.status !== 201) throw new Error(`slot failed: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body.id;

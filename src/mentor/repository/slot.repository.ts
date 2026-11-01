@@ -3,30 +3,37 @@ import type { SlotRow } from "../entity/mentor.entity";
 export const findById = (db: D1Database, id: string) =>
   db.prepare("SELECT * FROM availability_slots WHERE id = ?").bind(id).first<SlotRow>();
 
+// false when the time overlaps another slot of the mentor
 export async function insert(
   db: D1Database,
   s: { id: string; mentorId: string; startTime: string; endTime: string; timezone: string; now: string },
 ) {
-  await db
+  const res = await db
     .prepare(
       `INSERT INTO availability_slots (id, mentor_id, start_time, end_time, timezone, status, version, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'AVAILABLE', 0, ?, ?)`,
+       SELECT ?, ?, ?, ?, ?, 'AVAILABLE', 0, ?, ?
+       WHERE NOT EXISTS (SELECT 1 FROM availability_slots WHERE mentor_id = ? AND start_time < ? AND end_time > ?)`,
     )
-    .bind(s.id, s.mentorId, s.startTime, s.endTime, s.timezone, s.now, s.now)
+    .bind(s.id, s.mentorId, s.startTime, s.endTime, s.timezone, s.now, s.now, s.mentorId, s.endTime, s.startTime)
     .run();
+  return res.meta.changes > 0;
 }
 
+// false when the new time overlaps another slot of the mentor
 export async function update(
   db: D1Database,
-  s: { id: string; startTime: string; endTime: string; timezone: string; status: string; now: string },
+  s: { id: string; mentorId: string; startTime: string; endTime: string; timezone: string; status: string; now: string },
 ) {
-  await db
+  const res = await db
     .prepare(
       `UPDATE availability_slots SET start_time = ?, end_time = ?, timezone = ?, status = ?, version = version + 1, updated_at = ?
-       WHERE id = ?`,
+       WHERE id = ? AND NOT EXISTS (
+         SELECT 1 FROM availability_slots o WHERE o.mentor_id = ? AND o.id <> ? AND o.start_time < ? AND o.end_time > ?
+       )`,
     )
-    .bind(s.startTime, s.endTime, s.timezone, s.status, s.now, s.id)
+    .bind(s.startTime, s.endTime, s.timezone, s.status, s.now, s.id, s.mentorId, s.id, s.endTime, s.startTime)
     .run();
+  return res.meta.changes > 0;
 }
 
 export async function remove(db: D1Database, id: string) {

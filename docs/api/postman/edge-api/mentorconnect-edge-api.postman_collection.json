@@ -1288,7 +1288,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"LKR\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/mentors/me",
@@ -1331,7 +1331,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"LKR\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/mentors/me",
@@ -1374,7 +1374,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":-1,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":-1,\"hourlyRateCents\":5000,\"currency\":\"LKR\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/mentors/me",
@@ -1417,7 +1417,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"USD\"}"
+              "raw": "{\"title\":\"Senior Eng\",\"organization\":\"WSO2\",\"industry\":\"Software\",\"experienceYears\":8,\"hourlyRateCents\":5000,\"currency\":\"LKR\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/mentors/me",
