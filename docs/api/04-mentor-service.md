@@ -19,7 +19,7 @@ MentorSummary (search results):
   "industry": "Software",
   "experienceYears": 8,
   "hourlyRateCents": 5000,
-  "currency": "USD",
+  "currency": "LKR",
   "ratingAvg": 4.6,
   "ratingCount": 12,
   "expertises": [{ "id": "e1...", "name": "Java" }]
@@ -92,7 +92,7 @@ Create or update the own profile. A new profile starts with `verificationStatus`
   "bio": "I help students move into backend roles.",
   "experienceYears": 8,
   "hourlyRateCents": 5000,
-  "currency": "USD"
+  "currency": "LKR"
 }
 ```
 
@@ -102,7 +102,7 @@ Create or update the own profile. A new profile starts with `verificationStatus`
 | `organization`, `industry`, `bio` | optional text |
 | `experienceYears` | required, 0 or more |
 | `hourlyRateCents` | required, 0 or more |
-| `currency` | optional, 3 letters, default `USD` |
+| `currency` | optional, only `LKR`, default `LKR` |
 
 Responses: `201` MentorResponse (first time), `200` MentorResponse (update), `400`, `401`, `403`.
 
@@ -214,10 +214,10 @@ Access: Mentor.
 | Field | Rule |
 |---|---|
 | `startTime` | required, in the future |
-| `endTime` | required, after `startTime` |
+| `endTime` | required, exactly 60 minutes after `startTime` |
 | `timezone` | optional, IANA name, default `UTC` |
 
-Responses: `201` SlotResponse, `400`, `401`, `403`, `404` no mentor profile, `409` a slot with this start already exists.
+Responses: `201` SlotResponse, `400`, `401`, `403`, `404` no mentor profile, `409` the time overlaps another slot of this mentor. A slot may start exactly when another ends.
 
 ### GET /api/mentors/me/slots
 
@@ -236,7 +236,7 @@ Only slots with status `AVAILABLE` or `BLOCKED` can be changed. Access: Mentor.
 }
 ```
 
-`status` is optional and may only be `AVAILABLE` or `BLOCKED`. Responses: `200` SlotResponse, `400`, `401`, `403`, `404`, `409` slot is HELD or BOOKED, or the start already exists.
+`status` is optional and may only be `AVAILABLE` or `BLOCKED`. Responses: `200` SlotResponse, `400`, `401`, `403`, `404`, `409` slot is HELD or BOOKED, or the time overlaps another slot.
 
 ### DELETE /api/mentors/me/slots/{slotId}
 

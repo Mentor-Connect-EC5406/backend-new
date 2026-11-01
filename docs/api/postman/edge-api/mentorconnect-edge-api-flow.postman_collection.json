@@ -342,7 +342,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Flow Mentor {{suffix}}\",\n  \"organization\": \"FlowOrg\",\n  \"industry\": \"Software\",\n  \"bio\": \"Created by the flow collection\",\n  \"experienceYears\": 5,\n  \"hourlyRateCents\": 6000,\n  \"currency\": \"USD\"\n}",
+              "raw": "{\n  \"title\": \"Flow Mentor {{suffix}}\",\n  \"organization\": \"FlowOrg\",\n  \"industry\": \"Software\",\n  \"bio\": \"Created by the flow collection\",\n  \"experienceYears\": 5,\n  \"hourlyRateCents\": 6000,\n  \"currency\": \"LKR\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

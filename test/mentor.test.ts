@@ -7,6 +7,8 @@ describe("mentor profile and approval", () => {
     const profile = await api("PUT", "/api/mentors/me", { token: mentor.token, body: { title: "Engineer", experienceYears: 2, hourlyRateCents: 4000 } });
     expect(profile.status).toBe(201);
     expect(profile.body.verificationStatus).toBe("PENDING");
+    expect(profile.body.currency).toBe("LKR");
+    expect((await api("PUT", "/api/mentors/me", { token: mentor.token, body: { title: "Senior", experienceYears: 3, hourlyRateCents: 4000, currency: "USD" } })).status).toBe(400);
     expect((await api("PUT", "/api/mentors/me", { token: mentor.token, body: { title: "Senior", experienceYears: 3, hourlyRateCents: 4000 } })).status).toBe(200);
 
     const student = await registered("STUDENT");
@@ -93,12 +95,23 @@ describe("availability slots", () => {
     expect((await api("DELETE", `/api/mentors/me/slots/${slotId}`, { token: mentor.token })).status).toBe(204);
   });
 
-  it("rejects a duplicate start time and an end before the start", async () => {
+  it("allows only 60 minute slots that do not overlap", async () => {
     const { mentor } = await approvedMentor();
-    const start = new Date(Math.floor((Date.now() + 96 * HOUR) / 1000) * 1000).toISOString();
-    const end = new Date(Date.parse(start) + HOUR).toISOString();
-    expect((await api("POST", "/api/mentors/me/slots", { token: mentor.token, body: { startTime: start, endTime: end } })).status).toBe(201);
-    expect((await api("POST", "/api/mentors/me/slots", { token: mentor.token, body: { startTime: start, endTime: end } })).status).toBe(409);
-    expect((await api("POST", "/api/mentors/me/slots", { token: mentor.token, body: { startTime: end, endTime: start } })).status).toBe(400);
+    const at = (ms: number) => new Date(Math.floor((Date.now() + 96 * HOUR) / 1000) * 1000 + ms).toISOString();
+    const create = (from: number, to: number) => api("POST", "/api/mentors/me/slots", { token: mentor.token, body: { startTime: at(from), endTime: at(to) } });
+
+    const first = await create(0, HOUR);
+    expect(first.status).toBe(201);
+    expect((await create(0, HOUR)).status).toBe(409);
+    expect((await create(HOUR / 2, HOUR * 1.5)).status).toBe(409);
+    expect((await create(-HOUR / 2, HOUR / 2)).status).toBe(409);
+    expect((await create(HOUR, 0)).status).toBe(400);
+    expect((await create(0, HOUR / 2)).status).toBe(400);
+
+    const next = await create(HOUR, 2 * HOUR);
+    expect(next.status).toBe(201);
+    const path = `/api/mentors/me/slots/${next.body.id}`;
+    expect((await api("PUT", path, { token: mentor.token, body: { startTime: at(HOUR / 2), endTime: at(HOUR * 1.5) } })).status).toBe(409);
+    expect((await api("PUT", path, { token: mentor.token, body: { startTime: at(2 * HOUR), endTime: at(3 * HOUR) } })).status).toBe(200);
   });
 });

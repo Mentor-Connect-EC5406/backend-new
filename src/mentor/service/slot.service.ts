@@ -25,8 +25,6 @@ const toResponse = (s: SlotRow): SlotResponse => ({
   status: s.status,
 });
 
-const isUnique = (e: unknown) => String(e).includes("UNIQUE");
-
 async function ownSlot(db: D1Database, mentorId: string, slotId: string): Promise<SlotRow> {
   const slot = await repo.findById(db, slotId);
   if (!slot || slot.mentor_id !== mentorId) throw notFound("Slot not found");
@@ -36,19 +34,15 @@ async function ownSlot(db: D1Database, mentorId: string, slotId: string): Promis
 export async function createSlot(db: D1Database, me: CurrentUser, req: CreateSlotRequest): Promise<SlotResponse> {
   const mentor = await requireMentor(db, me.id);
   const id = newId();
-  try {
-    await repo.insert(db, {
-      id,
-      mentorId: mentor.id,
-      startTime: req.startTime,
-      endTime: req.endTime,
-      timezone: req.timezone ?? "UTC",
-      now: nowIso(),
-    });
-  } catch (e) {
-    if (isUnique(e)) throw conflict("A slot with this start time already exists");
-    throw e;
-  }
+  const inserted = await repo.insert(db, {
+    id,
+    mentorId: mentor.id,
+    startTime: req.startTime,
+    endTime: req.endTime,
+    timezone: req.timezone ?? "UTC",
+    now: nowIso(),
+  });
+  if (!inserted) throw conflict("This time overlaps another slot");
   return toResponse((await repo.findById(db, id))!);
 }
 
@@ -66,19 +60,16 @@ export async function updateSlot(
   const mentor = await requireMentor(db, me.id);
   const slot = await ownSlot(db, mentor.id, slotId);
   if (slot.status !== "AVAILABLE" && slot.status !== "BLOCKED") throw conflict("Slot is " + slot.status);
-  try {
-    await repo.update(db, {
-      id: slot.id,
-      startTime: req.startTime,
-      endTime: req.endTime,
-      timezone: req.timezone ?? slot.timezone,
-      status: req.status ?? slot.status,
-      now: nowIso(),
-    });
-  } catch (e) {
-    if (isUnique(e)) throw conflict("A slot with this start time already exists");
-    throw e;
-  }
+  const updated = await repo.update(db, {
+    id: slot.id,
+    mentorId: mentor.id,
+    startTime: req.startTime,
+    endTime: req.endTime,
+    timezone: req.timezone ?? slot.timezone,
+    status: req.status ?? slot.status,
+    now: nowIso(),
+  });
+  if (!updated) throw conflict("This time overlaps another slot");
   return toResponse((await repo.findById(db, slot.id))!);
 }
 

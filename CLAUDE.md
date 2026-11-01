@@ -53,6 +53,7 @@ docs/database/schema/: source schemas from the Spring repo
 
 ## Business rules
 - Roles: STUDENT, MENTOR, ADMIN
+- Currency is LKR only. Slots are exactly 60 minutes and cannot overlap for one mentor (409)
 - Double booking: unique index uq_bookings_active_slot and slot status. Create the booking and set the slot to HELD in one db.batch()
 - The booking module may update availability_slots.status (HELD, BOOKED, AVAILABLE)
 - POST /api/bookings/{id}/accept: only the mentor of the booking, no real payment. Booking CONFIRMED, slot BOOKED, session created. POST /api/bookings/{id}/decline: only the mentor. Booking CANCELLED, slot AVAILABLE
