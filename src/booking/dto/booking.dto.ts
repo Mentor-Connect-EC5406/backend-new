@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { pageQuerySchema } from "../../util/pagination";
-import type { BookingRow, ReviewRow, SessionRow } from "../entity/booking.entity";
+import type { BookingDetailRow, ReviewRow, SessionRow } from "../entity/booking.entity";
 
 export const createBookingSchema = z.object({
   slotId: z.string().uuid("must be a valid UUID"),
@@ -23,7 +23,7 @@ export const rescheduleBookingSchema = z.object({
 
 export const createReviewSchema = z.object({
   rating: z.number({ error: "must be a number from 1 to 5" }).int("must be a whole number").min(1).max(5),
-  comment: z.string().trim().max(1000).optional(),
+  comment: z.string({ error: "is required" }).trim().min(20, "must be at least 20 characters").max(1000),
 });
 
 export const listReviewsQuerySchema = pageQuerySchema.extend({
@@ -40,8 +40,12 @@ export type ListReviewsQuery = z.infer<typeof listReviewsQuerySchema>;
 export type BookingResponse = {
   id: string;
   studentId: string;
+  studentName: string | null;
   mentorId: string;
+  mentorName: string | null;
   slotId: string;
+  meetingUrl: string | null;
+  reviewed: boolean;
   scheduledStart: string;
   scheduledEnd: string;
   topic: string | null;
@@ -75,11 +79,15 @@ export type ReviewResponse = {
   createdAt: string;
 };
 
-export const toBookingResponse = (r: BookingRow): BookingResponse => ({
+export const toBookingResponse = (r: BookingDetailRow): BookingResponse => ({
   id: r.id,
   studentId: r.student_id,
+  studentName: r.student_name,
   mentorId: r.mentor_id,
+  mentorName: r.mentor_name,
   slotId: r.slot_id,
+  meetingUrl: r.meeting_url,
+  reviewed: r.reviewed === 1,
   scheduledStart: r.scheduled_start,
   scheduledEnd: r.scheduled_end,
   topic: r.topic,

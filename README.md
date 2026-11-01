@@ -309,7 +309,7 @@ Login itself happens in Asgardeo, not in this API.
 | GET | `/api/bookings/{id}/session` | The student or mentor |
 | POST | `/api/bookings/{id}/session/start` | The mentor |
 | POST | `/api/bookings/{id}/session/complete` | The student, after `scheduledStart` |
-| POST | `/api/bookings/{id}/review` | The student (`rating` 1 to 5, optional `comment`) |
+| POST | `/api/bookings/{id}/review` | The student (`rating` 1 to 5, `comment` 20 to 1000 characters) |
 | GET | `/api/reviews` | Any (`mentorId` required) |
 
 ### Notification and chat

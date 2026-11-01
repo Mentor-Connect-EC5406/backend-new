@@ -191,6 +191,7 @@ ConversationResponse:
 {
   "id": "55555555-6666-4777-8888-999999999999",
   "participants": ["5f1c0b7e-...", "8d2e7a10-..."],
+  "with": { "id": "8d2e7a10-...", "name": "Nimal Silva", "role": "MENTOR", "profileImageKey": null },
   "lastMessage": { "content": "See you tomorrow", "sentAt": "2026-11-04T18:00:00.000Z" },
   "unreadCount": 2
 }
@@ -227,7 +228,7 @@ MessageResponse:
 ```json
 { "content": "See you tomorrow", "attachmentKey": null }
 ```
-`POST .../messages`: `content` is required, up to 2000 characters. `201` MessageResponse, `403` not a participant.
+`POST .../messages`: `content` is required, up to 1000 characters. `201` MessageResponse, `403` not a participant.
 
 Chat uses polling in this version. Real-time delivery (WebSocket) is a later improvement.
 

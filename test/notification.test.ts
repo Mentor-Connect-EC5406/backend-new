@@ -53,13 +53,14 @@ describe("conversations and messages", () => {
     const id = created.body.id;
 
     expect((await api("POST", `/api/conversations/${id}/messages`, { token: a.token, body: { content: " " } })).status).toBe(400);
-    expect((await api("POST", `/api/conversations/${id}/messages`, { token: a.token, body: { content: "a".repeat(2001) } })).status).toBe(400);
+    expect((await api("POST", `/api/conversations/${id}/messages`, { token: a.token, body: { content: "a".repeat(1001) } })).status).toBe(400);
     expect((await api("POST", `/api/conversations/${id}/messages`, { token: a.token, body: { content: "Hello" } })).status).toBe(201);
     await new Promise((r) => setTimeout(r, 5));
     await api("POST", `/api/conversations/${id}/messages`, { token: b.token, body: { content: "See you tomorrow" } });
 
     const list = await api("GET", "/api/conversations", { token: a.token });
-    expect(list.body[0]).toMatchObject({ id, unreadCount: 1, lastMessage: { content: "See you tomorrow" } });
+    expect(list.body[0]).toMatchObject({ id, unreadCount: 1, lastMessage: { content: "See you tomorrow" }, with: { id: b.id, name: "Test User", role: "MENTOR", profileImageKey: null } });
+    expect((await api("GET", "/api/conversations", { token: b.token })).body[0].with.id).toBe(a.id);
     const page = await api("GET", `/api/conversations/${id}/messages?size=1`, { token: a.token });
     expect(page.body).toMatchObject({ totalElements: 2, totalPages: 2 });
     expect(page.body.content[0].content).toBe("See you tomorrow");

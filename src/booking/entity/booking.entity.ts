@@ -18,6 +18,13 @@ export type BookingRow = {
   updated_at: string;
 };
 
+export type BookingDetailRow = BookingRow & {
+  student_name: string | null;
+  mentor_name: string | null;
+  meeting_url: string | null;
+  reviewed: number;
+};
+
 export type SessionRow = {
   id: string;
   booking_id: string;

@@ -18,6 +18,7 @@ import * as repo from "../repository/conversation.repository";
 const toConversation = (r: ConversationListRow): ConversationResponse => ({
   id: r.id,
   participants: JSON.parse(r.participants) as string[],
+  with: r.with_id ? { id: r.with_id, name: r.with_name!, role: r.with_role!, profileImageKey: r.with_image_key } : null,
   lastMessage: r.last_content !== null && r.last_sent_at !== null ? { content: r.last_content, sentAt: r.last_sent_at } : null,
   unreadCount: r.unread_count,
 });
