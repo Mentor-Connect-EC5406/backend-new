@@ -11,11 +11,26 @@ import {
   type CancelBookingRequest,
   type CreateBookingRequest,
   type ListBookingsQuery,
+  type RescheduleBookingRequest,
 } from "../dto/booking.dto";
 import type { BookingRow } from "../entity/booking.entity";
 import * as repo from "../repository/booking.repository";
 
 const RESPONSE_HOURS = 24;
+const CHANGE_LIMIT_HOURS = 12;
+
+// the mentor answers within 24 hours, and never later than the slot start
+const responseDeadline = (now: string, slotStart: string) =>
+  new Date(Math.min(Date.parse(now) + RESPONSE_HOURS * 3600000, Date.parse(slotStart))).toISOString();
+
+const meetingUrlFor = (bookingId: string) => `https://meet.jit.si/mentorconnect-${bookingId.slice(0, 8)}`;
+
+// cancel and reschedule close 12 hours before the start
+function requireChangeWindow(b: BookingRow, action: string) {
+  if (Date.parse(b.scheduled_start) - Date.now() < CHANGE_LIMIT_HOURS * 3600000) {
+    throw conflict(`A booking cannot be ${action} within ${CHANGE_LIMIT_HOURS} hours of its start`);
+  }
+}
 
 // "2026-11-05 09:00 UTC"
 export const formatUtc = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -66,8 +81,7 @@ export async function createBooking(env: Env, user: CurrentUser, req: CreateBook
     status: "PENDING",
     cancellation_reason: null,
     rescheduled_from_id: null,
-    // the mentor answers within 24 hours, and never later than the slot start
-    expires_at: new Date(Math.min(Date.parse(now) + RESPONSE_HOURS * 3600000, Date.parse(slot.start_time))).toISOString(),
+    expires_at: responseDeadline(now, slot.start_time),
     created_at: now,
     updated_at: now,
   };
@@ -118,8 +132,7 @@ export async function acceptBooking(env: Env, user: CurrentUser, id: string): Pr
 
   const now = nowIso();
   if (booking.expires_at && booking.expires_at <= now) throw conflict("Booking has expired");
-  const meetingUrl = `https://meet.jit.si/mentorconnect-${booking.id.slice(0, 8)}`;
-  const changed = await repo.confirm(env.DB, booking, newId(), meetingUrl, now);
+  const changed = await repo.confirm(env.DB, booking, newId(), meetingUrlFor(booking.id), now);
 
   const updated = (await repo.findById(env.DB, id))!;
   if (updated.status !== "CONFIRMED") throw conflict("Booking was cancelled or expired");
@@ -155,6 +168,58 @@ export async function declineBooking(
   return toBookingResponse((await repo.findById(env.DB, id))!);
 }
 
+// the old booking becomes RESCHEDULED and a new one keeps its status on the new slot
+export async function rescheduleBooking(
+  env: Env,
+  user: CurrentUser,
+  id: string,
+  req: RescheduleBookingRequest,
+): Promise<BookingResponse> {
+  const booking = await loadForParty(env.DB, id, user, ["STUDENT"]);
+  if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") throw conflict("Booking cannot be rescheduled");
+  requireChangeWindow(booking, "rescheduled");
+
+  const slot = await repo.findSlot(env.DB, req.slotId);
+  if (!slot) throw notFound("Slot not found");
+  if (slot.mentor_id !== booking.mentor_id) throw conflict("The new slot must belong to the same mentor");
+  if (slot.status !== "AVAILABLE" || Date.parse(slot.start_time) <= Date.now()) throw conflict("Slot is not available");
+  const length = (start: string, end: string) => Date.parse(end) - Date.parse(start);
+  if (length(slot.start_time, slot.end_time) !== length(booking.scheduled_start, booking.scheduled_end)) {
+    throw conflict("The new slot must have the same length");
+  }
+
+  const now = nowIso();
+  const confirmed = booking.status === "CONFIRMED";
+  const row: BookingRow = {
+    ...booking,
+    id: newId(),
+    slot_id: slot.id,
+    scheduled_start: slot.start_time,
+    scheduled_end: slot.end_time,
+    rescheduled_from_id: booking.id,
+    expires_at: confirmed ? null : responseDeadline(now, slot.start_time),
+    created_at: now,
+    updated_at: now,
+  };
+
+  try {
+    const session = confirmed ? { id: newId(), meetingUrl: meetingUrlFor(row.id) } : null;
+    if (!(await repo.reschedule(env.DB, booking, row, slot.version, session))) throw conflict("Slot is not available");
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    if (String(e).includes("UNIQUE")) throw conflict("Slot is already booked");
+    throw e;
+  }
+
+  const message = `The session on ${formatUtc(booking.scheduled_start)} moved to ${formatUtc(row.scheduled_start)}`;
+  await createNotification(env.DB, { userId: row.student_id, type: "BOOKING_RESCHEDULED", title: "Booking rescheduled", message });
+  const mentorUser = await mentorUserId(env.DB, row.mentor_id);
+  if (mentorUser) {
+    await createNotification(env.DB, { userId: mentorUser, type: "BOOKING_RESCHEDULED", title: "Booking rescheduled", message });
+  }
+  return toBookingResponse(row);
+}
+
 export async function cancelBooking(
   env: Env,
   user: CurrentUser,
@@ -163,6 +228,7 @@ export async function cancelBooking(
 ): Promise<BookingResponse> {
   const booking = await loadForParty(env.DB, id, user, ["STUDENT", "MENTOR"]);
   if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") throw conflict("Booking is not cancellable");
+  requireChangeWindow(booking, "cancelled");
 
   if (!(await repo.cancel(env.DB, booking, req.reason || null, nowIso()))) throw conflict("Booking is not cancellable");
   const updated = (await repo.findById(env.DB, id))!;

@@ -304,7 +304,8 @@ Login itself happens in Asgardeo, not in this API.
 | GET | `/api/bookings/{id}` | The student, the mentor, Admin |
 | POST | `/api/bookings/{id}/accept` | The mentor of the booking |
 | POST | `/api/bookings/{id}/decline` | The mentor of the booking (optional `reason`) |
-| POST | `/api/bookings/{id}/cancel` | The student or mentor (optional `reason`) |
+| POST | `/api/bookings/{id}/reschedule` | The student (`slotId`), until 12 hours before the start |
+| POST | `/api/bookings/{id}/cancel` | The student or mentor (optional `reason`), until 12 hours before the start |
 | GET | `/api/bookings/{id}/session` | The student or mentor |
 | POST | `/api/bookings/{id}/session/start` | The mentor |
 | POST | `/api/bookings/{id}/session/complete` | The student, after `scheduledStart` |
@@ -341,6 +342,7 @@ Login itself happens in Asgardeo, not in this API.
   2. The mentor accepts (no real payment yet): `CONFIRMED`, slot `BOOKED`, a session is created as `SCHEDULED` with a Jitsi meeting URL. Accepting again returns 200. If the mentor declines: `CANCELLED`, slot `AVAILABLE`.
   3. The mentor can start the session from 15 minutes before `scheduledStart` until `scheduledEnd` (optional). The student completes it after `scheduledStart`. The booking becomes `COMPLETED`.
   4. The student can then review the booking. The mentor rating is updated.
+- Reschedule: the student moves a `PENDING` or `CONFIRMED` booking to an `AVAILABLE` slot of the same mentor with the same length. The old booking becomes `RESCHEDULED` and a new booking with `rescheduledFromId` keeps the status. Cancel and reschedule close 12 hours before the start.
 - Double booking is blocked by the slot status and by `uq_bookings_active_slot`.
 - Cron (every minute): cancels expired `PENDING` bookings and sets their slot back to `AVAILABLE`.
 - Notifications are created in code (no HTTP) by the booking module when a booking is created, confirmed and cancelled.
@@ -359,7 +361,7 @@ The tests in `test/` run with Vitest and `@cloudflare/vitest-plugin` inside the 
 | `auth.test.ts` | Asgardeo token checks (expired, wrong audience or issuer, unknown key, `alg: none`, HS256, tampered), first login and register, suspended users, role from the database |
 | `user.test.ts` | `/api/users/me`, student profile, admin user list and status |
 | `mentor.test.ts` | profile, approval gate, verification review, expertise and search, slots |
-| `booking.test.ts` | slot HOLD and pricing, double booking, accept, decline, cancel, session window, review and rating, expiry cron |
+| `booking.test.ts` | slot HOLD and pricing, double booking, accept, decline, cancel, reschedule, 12 hour window, session window, review and rating, expiry cron |
 | `notification.test.ts` | booking notifications, read and read-all, conversations, messages, unread counts |
 | `file.test.ts` | R2 upload urls, key ownership, size limits, `GET /api/files` access rules |
 

@@ -20,10 +20,10 @@ Access names: Any, Student, Mentor, Admin. Responses use the same status codes a
 Move a booking to another slot of the same mentor. Access: Student of the booking.
 
 ```json
-{ "newSlotId": "b7c8d9e0-1234-4abc-8def-0123456789ab" }
+{ "slotId": "b7c8d9e0-1234-4abc-8def-0123456789ab" }
 ```
 
-Rules: the booking is `CONFIRMED`, it starts in more than 24 hours, the new slot belongs to the same mentor and has the same length (so the price stays the same). The old booking becomes `RESCHEDULED` and its slot is released. A new booking is created as `CONFIRMED` with `rescheduledFromId` set and no new payment.
+Rules: the booking is `PENDING` or `CONFIRMED`, it starts in at least 12 hours, the new slot is `AVAILABLE`, belongs to the same mentor and has the same length (so the price stays the same). The old booking becomes `RESCHEDULED` and its slot is released. A new booking is created with the same status and `rescheduledFromId` set, with no new payment.
 
 Responses: `201` BookingResponse (the new booking), `400`, `401`, `403`, `404`, `409` not allowed or new slot not available.
 
@@ -347,5 +347,5 @@ Both answer `201` with `{ "id": "..." }`.
 
 
 - Who may start a chat: any two users, or only a student and mentor who share a booking or program
-- Reschedule: 24 hour limit and same mentor only
+- Reschedule: 12 hour limit and same mentor only
 - Chat delivery: polling now, WebSocket later

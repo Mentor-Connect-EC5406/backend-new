@@ -8,6 +8,7 @@ import {
   createReviewSchema,
   listBookingsQuerySchema,
   listReviewsQuerySchema,
+  rescheduleBookingSchema,
 } from "../dto/booking.dto";
 import * as bookings from "../service/booking.service";
 import * as reviews from "../service/review.service";
@@ -38,6 +39,11 @@ bookingController.post("/api/bookings/:id/decline", authenticate, async (c) => {
   const hasBody = (await c.req.raw.clone().text()).trim() !== "";
   const body = hasBody ? await parseBody(c.req.raw, cancelBookingSchema) : {};
   return c.json(await bookings.declineBooking(c.env, c.get("user"), c.req.param("id"), body), 200);
+});
+
+bookingController.post("/api/bookings/:id/reschedule", authenticate, async (c) => {
+  const body = await parseBody(c.req.raw, rescheduleBookingSchema);
+  return c.json(await bookings.rescheduleBooking(c.env, c.get("user"), c.req.param("id"), body), 201);
 });
 
 bookingController.post("/api/bookings/:id/cancel", authenticate, async (c) => {
