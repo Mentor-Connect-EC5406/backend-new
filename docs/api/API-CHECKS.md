@@ -7,6 +7,7 @@ Login is Asgardeo only; every collection uses Asgardeo access tokens (see README
 
 - `mentorconnect-edge-api.postman_collection.json`: register, user and mentor endpoints
 - `mentorconnect-edge-api-flow.postman_collection.json`: end-to-end flow covering register, mentor, booking, notification and conversation endpoints
+- `mentorconnect-edge-api-frontend.postman_collection.json`: frontend handoff features: LKR, slot rules, public mentor pages, search filters, extended profiles, saved mentors, goals, reports, admin stats
 - `mentorconnect-edge-api-asgardeo.postman_collection.json`: real Asgardeo login (OAuth 2.0 PKCE, run by hand), covers `POST /api/users/register`
 
 Known gaps:
@@ -17,32 +18,32 @@ Known gaps:
 | Service | Method | Path | Built | Tested |
 |---|---|---|---|---|
 | health | GET | /api/health | ✅ | ⬜ |
-| user | POST | /api/users/register | ✅ | ⬜ |
+| user | POST | /api/users/register | ✅ | ✅ |
 | user | GET | /api/users/me | ✅ | ✅ |
 | user | PUT | /api/users/me | ✅ | ✅ |
 | user | GET | /api/users | ✅ | ✅ |
 | user | PUT | /api/users/{id}/status | ✅ | ✅ |
 | user | POST | /api/users/me/avatar-upload-url | ✅ | ⬜ |
-| user | GET | /api/students/me/profile | ✅ | ⬜ |
-| user | PUT | /api/students/me/profile | ✅ | ⬜ |
+| user | GET | /api/students/me/profile | ✅ | ✅ |
+| user | PUT | /api/students/me/profile | ✅ | ✅ |
 | mentor | GET | /api/mentors/me | ✅ | ✅ |
-| mentor | PUT | /api/mentors/me | ✅ | ⬜ |
-| mentor | GET | /api/mentors | ✅ | ⬜ |
-| mentor | GET | /api/mentors/{id} | ✅ | ⬜ |
+| mentor | PUT | /api/mentors/me | ✅ | ✅ |
+| mentor | GET | /api/mentors | ✅ | ✅ |
+| mentor | GET | /api/mentors/{id} | ✅ | ✅ |
 | mentor | GET | /api/expertise-categories | ✅ | ✅ |
 | mentor | POST | /api/expertise-categories | ✅ | ✅ |
 | mentor | POST | /api/expertise-categories/{id}/expertises | ✅ | ✅ |
 | mentor | PUT | /api/mentors/me/expertises | ✅ | ✅ |
-| mentor | POST | /api/mentors/me/slots | ✅ | ⬜ |
+| mentor | POST | /api/mentors/me/slots | ✅ | ✅ |
 | mentor | GET | /api/mentors/me/slots | ✅ | ✅ |
-| mentor | PUT | /api/mentors/me/slots/{slotId} | ✅ | ⬜ |
+| mentor | PUT | /api/mentors/me/slots/{slotId} | ✅ | ✅ |
 | mentor | DELETE | /api/mentors/me/slots/{slotId} | ✅ | ✅ |
-| mentor | GET | /api/mentors/{id}/slots | ✅ | ⬜ |
+| mentor | GET | /api/mentors/{id}/slots | ✅ | ✅ |
 | mentor | POST | /api/mentors/me/verifications | ✅ | ✅ |
 | mentor | GET | /api/mentors/me/verifications | ✅ | ✅ |
 | mentor | GET | /api/verifications | ✅ | ✅ |
 | mentor | PUT | /api/verifications/{id} | ✅ | ✅ |
-| mentor | POST | /api/mentors/me/verification-upload-url | ✅ | ⬜ |
+| mentor | POST | /api/mentors/me/verification-upload-url | ✅ | ✅ |
 | booking | POST | /api/bookings | ✅ | ✅ |
 | booking | GET | /api/bookings | ✅ | ✅ |
 | booking | GET | /api/bookings/{id} | ✅ | ✅ |
@@ -54,7 +55,7 @@ Known gaps:
 | booking | POST | /api/bookings/{id}/session/start | ✅ | ⬜ |
 | booking | POST | /api/bookings/{id}/session/complete | ✅ | ⬜ |
 | booking | POST | /api/bookings/{id}/review | ✅ | ⬜ |
-| booking | GET | /api/mentors/{id}/reviews | ✅ | ⬜ |
+| booking | GET | /api/mentors/{id}/reviews | ✅ | ✅ |
 | booking | GET | /api/reviews | ✅ | ⬜ |
 | notification | GET | /api/notifications | ✅ | ✅ |
 | notification | PUT | /api/notifications/read-all | ✅ | ✅ |
@@ -66,16 +67,16 @@ Known gaps:
 | notification | PUT | /api/conversations/{id}/read | ✅ | ✅ |
 | notification | POST | /api/conversations/{id}/attachment-upload-url | ✅ | ⬜ |
 | file | GET | /api/files/{key} | ✅ | ⬜ |
-| mentor | GET | /api/students/me/saved-mentors | ✅ | ⬜ |
-| mentor | PUT | /api/students/me/saved-mentors/{id} | ✅ | ⬜ |
-| mentor | DELETE | /api/students/me/saved-mentors/{id} | ✅ | ⬜ |
-| mentorship | GET | /api/goals | ✅ | ⬜ |
-| mentorship | POST | /api/goals | ✅ | ⬜ |
-| mentorship | PATCH | /api/goals/{id} | ✅ | ⬜ |
-| mentorship | DELETE | /api/goals/{id} | ✅ | ⬜ |
-| analytic | POST | /api/reports | ✅ | ⬜ |
-| analytic | GET | /api/reports/mine | ✅ | ⬜ |
-| analytic | GET | /api/reports | ✅ | ⬜ |
-| analytic | GET | /api/reports/{id} | ✅ | ⬜ |
-| analytic | PUT | /api/reports/{id} | ✅ | ⬜ |
-| analytic | GET | /api/admin/stats | ✅ | ⬜ |
+| mentor | GET | /api/students/me/saved-mentors | ✅ | ✅ |
+| mentor | PUT | /api/students/me/saved-mentors/{id} | ✅ | ✅ |
+| mentor | DELETE | /api/students/me/saved-mentors/{id} | ✅ | ✅ |
+| mentorship | GET | /api/goals | ✅ | ✅ |
+| mentorship | POST | /api/goals | ✅ | ✅ |
+| mentorship | PATCH | /api/goals/{id} | ✅ | ✅ |
+| mentorship | DELETE | /api/goals/{id} | ✅ | ✅ |
+| analytic | POST | /api/reports | ✅ | ✅ |
+| analytic | GET | /api/reports/mine | ✅ | ✅ |
+| analytic | GET | /api/reports | ✅ | ✅ |
+| analytic | GET | /api/reports/{id} | ✅ | ✅ |
+| analytic | PUT | /api/reports/{id} | ✅ | ✅ |
+| analytic | GET | /api/admin/stats | ✅ | ✅ |
