@@ -17,8 +17,8 @@ export async function complete(db: D1Database, sessionId: string, bookingId: str
   const [update] = await db.batch([
     db
       .prepare(
-        `UPDATE mentoring_sessions SET status = 'COMPLETED', actual_end = ?1, updated_at = ?1
-         WHERE id = ?2 AND status = 'IN_PROGRESS'`,
+        `UPDATE mentoring_sessions SET status = 'COMPLETED', actual_start = COALESCE(actual_start, ?1), actual_end = ?1, updated_at = ?1
+         WHERE id = ?2 AND status IN ('SCHEDULED', 'IN_PROGRESS')`,
       )
       .bind(now, sessionId),
     db

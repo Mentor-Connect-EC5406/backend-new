@@ -306,7 +306,7 @@ Login itself happens in Asgardeo, not in this API.
 | POST | `/api/bookings/{id}/cancel` | The student or mentor (optional `reason`) |
 | GET | `/api/bookings/{id}/session` | The student or mentor |
 | POST | `/api/bookings/{id}/session/start` | The mentor |
-| POST | `/api/bookings/{id}/session/complete` | The mentor |
+| POST | `/api/bookings/{id}/session/complete` | The student, after `scheduledStart` |
 | POST | `/api/bookings/{id}/review` | The student (`rating` 1 to 5, optional `comment`) |
 | GET | `/api/reviews` | Any (`mentorId` required) |
 
@@ -338,7 +338,7 @@ Login itself happens in Asgardeo, not in this API.
 - Booking flow:
   1. The student creates a booking: `PENDING`, the slot is `HELD`, `expiresAt` is 15 minutes ahead. The booking and the hold are written in one `db.batch()`. Price = `hourlyRateCents` x session minutes / 60.
   2. The student confirms (no real payment yet): `CONFIRMED`, slot `BOOKED`, a session is created as `SCHEDULED` with a Jitsi meeting URL. Confirming again returns 200.
-  3. The mentor starts the session from 15 minutes before `scheduledStart` until `scheduledEnd`, then completes it. The booking becomes `COMPLETED`.
+  3. The mentor can start the session from 15 minutes before `scheduledStart` until `scheduledEnd` (optional). The student completes it after `scheduledStart`. The booking becomes `COMPLETED`.
   4. The student can then review the booking. The mentor rating is updated.
 - Double booking is blocked by the slot status and by `uq_bookings_active_slot`.
 - Cron (every minute): cancels expired `PENDING` bookings and sets their slot back to `AVAILABLE`.

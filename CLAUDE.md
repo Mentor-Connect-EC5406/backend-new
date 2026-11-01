@@ -57,6 +57,7 @@ docs/database/schema/: source schemas from the Spring repo
 - The booking module may update availability_slots.status (HELD, BOOKED, AVAILABLE)
 - POST /api/bookings/{id}/confirm: only the student of the booking, no real payment. Booking CONFIRMED, slot BOOKED
 - Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
+- POST /api/bookings/{id}/session/complete: only the student of the booking, after scheduledStart. Booking and session COMPLETED
 - Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed). Update the mentor rating after a review
 - Notifications: other modules call the notification service function (no HTTP). Create one on booking created, confirmed and cancelled
 - Admin cannot suspend their own account (409)

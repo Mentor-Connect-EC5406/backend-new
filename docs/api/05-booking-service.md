@@ -127,9 +127,9 @@ Response `200` SessionResponse with status `IN_PROGRESS` and `actualStart` set. 
 
 ### POST /api/bookings/{id}/session/complete
 
-Access: the mentor of the booking. No body.
+Access: the student of the booking, after `scheduledStart`. A mentor start is not required. No body.
 
-Response `200` SessionResponse with status `COMPLETED` and `actualEnd` set. The booking becomes `COMPLETED`. Also `401`, `403`, `404`, `409` session is not IN_PROGRESS.
+Response `200` SessionResponse with status `COMPLETED` and `actualEnd` set. The booking becomes `COMPLETED`. Also `401`, `403`, `404`, `409` booking is not CONFIRMED, session already completed, or start time not reached.
 
 ## Reviews
 

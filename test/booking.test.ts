@@ -112,13 +112,15 @@ describe("session and review", () => {
     expect((await api("POST", `/api/bookings/${booking.id}/session/start`, { token: mentor.token })).status).toBe(409);
     expect((await api("POST", `/api/bookings/${booking.id}/review`, { token: student.token, body: { rating: 5 } })).status).toBe(409);
     await api("POST", `/api/bookings/${booking.id}/confirm`, { token: student.token });
-    expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: mentor.token })).status).toBe(409);
+    expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: student.token })).status).toBe(409);
+    expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: mentor.token })).status).toBe(403);
     expect((await api("POST", `/api/bookings/${booking.id}/session/start`, { token: student.token })).status).toBe(403);
 
     const started = await api("POST", `/api/bookings/${booking.id}/session/start`, { token: mentor.token });
     expect(started.body.status).toBe("IN_PROGRESS");
     expect((await api("POST", `/api/bookings/${booking.id}/session/start`, { token: mentor.token })).status).toBe(409);
-    const done = await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: mentor.token });
+    await env.DB.prepare("UPDATE bookings SET scheduled_start = ? WHERE id = ?").bind(new Date(Date.now() - 60_000).toISOString(), booking.id).run();
+    const done = await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: student.token });
     expect(done.body.status).toBe("COMPLETED");
     expect((await api("GET", `/api/bookings/${booking.id}`, { token: student.token })).body.status).toBe("COMPLETED");
 
@@ -133,6 +135,21 @@ describe("session and review", () => {
     const list = await api("GET", `/api/reviews?mentorId=${mentorId}`, { token: student.token });
     expect(list.body.content[0].id).toBe(review.body.id);
     expect((await api("GET", "/api/reviews", { token: student.token })).status).toBe(400);
+  });
+
+  it("lets the student complete without a mentor start, once", async () => {
+    const { booking, student } = await book();
+    expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: student.token })).status).toBe(409);
+    await api("POST", `/api/bookings/${booking.id}/confirm`, { token: student.token });
+    await env.DB.prepare("UPDATE bookings SET scheduled_start = ? WHERE id = ?").bind(new Date(Date.now() - 60_000).toISOString(), booking.id).run();
+
+    const stranger = await registered("STUDENT");
+    expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: stranger.token })).status).toBe(403);
+    const done = await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: student.token });
+    expect(done.status).toBe(200);
+    expect(done.body.status).toBe("COMPLETED");
+    expect(done.body.actualStart).not.toBeNull();
+    expect((await api("POST", `/api/bookings/${booking.id}/session/complete`, { token: student.token })).status).toBe(409);
   });
 
   it("refuses to start a session that is too early", async () => {
