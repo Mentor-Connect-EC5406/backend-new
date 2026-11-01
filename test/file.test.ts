@@ -36,10 +36,10 @@ describe("avatar upload", () => {
     expect((await save(`avatars/${other.id}/${crypto.randomUUID()}.png`)).status).toBe(400);
     expect((await save(`avatars/${user.id}/${crypto.randomUUID()}.png`)).status).toBe(400);
 
-    const big = await uploadFile(user.token, "/api/users/me/avatar-upload-url", "image/png", new Uint8Array(6 * 1024 * 1024));
+    const big = await uploadFile(user.token, "/api/users/me/avatar-upload-url", "image/png", new Uint8Array(3 * 1024 * 1024));
     const tooBig = await save(big.key);
     expect(tooBig.status).toBe(400);
-    expect(JSON.stringify(tooBig.body)).toContain("5 MB");
+    expect(JSON.stringify(tooBig.body)).toContain("2 MB");
   });
 });
 

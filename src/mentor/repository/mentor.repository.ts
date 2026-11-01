@@ -1,7 +1,7 @@
 import type { SearchMentorsQuery, UpsertMentorRequest } from "../dto/mentor.dto";
 import type { MentorExpertiseRow, MentorRow, MentorWithUserRow } from "../entity/mentor.entity";
 
-const WITH_USER = `SELECT m.*, u.first_name, u.last_name, u.profile_image_key
+const WITH_USER = `SELECT m.*, u.first_name, u.last_name, u.profile_image_key, u.account_status
   FROM mentors m JOIN users u ON u.id = m.user_id`;
 
 export const findByUserId = (db: D1Database, userId: string) =>
@@ -40,7 +40,7 @@ const SEARCH_ORDER = {
 };
 
 export async function search(db: D1Database, f: SearchMentorsQuery) {
-  const where = ["m.verification_status = 'APPROVED'"];
+  const where = ["m.verification_status = 'APPROVED'", "u.account_status = 'ACTIVE'"];
   const params: unknown[] = [];
   const text = f.query ?? f.q;
   if (text) {
@@ -93,19 +93,19 @@ export async function unsaveForStudent(db: D1Database, studentId: string, mentor
   await db.prepare("DELETE FROM saved_mentors WHERE student_id = ? AND mentor_id = ?").bind(studentId, mentorId).run();
 }
 
-// a saved mentor stays hidden while not APPROVED
+// a saved mentor stays hidden while not APPROVED or not ACTIVE
 export async function listSaved(db: D1Database, studentId: string, limit: number, offset: number) {
   const total = await db
     .prepare(
-      `SELECT COUNT(*) AS n FROM saved_mentors s JOIN mentors m ON m.id = s.mentor_id
-       WHERE s.student_id = ? AND m.verification_status = 'APPROVED'`,
+      `SELECT COUNT(*) AS n FROM saved_mentors s JOIN mentors m ON m.id = s.mentor_id JOIN users u ON u.id = m.user_id
+       WHERE s.student_id = ? AND m.verification_status = 'APPROVED' AND u.account_status = 'ACTIVE'`,
     )
     .bind(studentId)
     .first<{ n: number }>();
   const rows = await db
     .prepare(
       `${WITH_USER} JOIN saved_mentors s ON s.mentor_id = m.id
-       WHERE s.student_id = ? AND m.verification_status = 'APPROVED'
+       WHERE s.student_id = ? AND m.verification_status = 'APPROVED' AND u.account_status = 'ACTIVE'
        ORDER BY s.created_at DESC, m.id LIMIT ? OFFSET ?`,
     )
     .bind(studentId, limit, offset)

@@ -71,7 +71,7 @@ export async function getMe(db: D1Database, me: CurrentUser): Promise<UserRespon
   return toResponse(await getOrThrow(db, me.id));
 }
 
-const AVATAR_MAX_BYTES = 5 * MB;
+const AVATAR_MAX_BYTES = 2 * MB;
 
 export async function updateMe(env: Env, me: CurrentUser, req: UpdateMeRequest): Promise<UserResponse> {
   const current = await getOrThrow(env.DB, me.id);

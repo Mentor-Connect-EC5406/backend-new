@@ -114,7 +114,7 @@ Responses: `201` MentorResponse (first time), `200` MentorResponse (update), `40
 
 ### GET /api/mentors
 
-Search APPROVED mentors only. Access: Public, no token needed.
+Search APPROVED mentors with an ACTIVE account only. Access: Public, no token needed.
 
 Query: `query` or `q` (name, title, organization, skills or expertise), repeated `industries`, `industry`, `expertiseId`, `minRating` (0 to 5), `maxRateCents`, `sort` (`rating` default, `price` lowest first, `experience` highest first), `page`, `size`.
 
@@ -122,7 +122,7 @@ Responses: `200` page of MentorSummary, `400`.
 
 ### GET /api/mentors/{id}
 
-Access: Public, no token needed for an APPROVED mentor. A mentor that is not APPROVED is visible only to that mentor and to ADMIN (with a token), others get 404. A bad token gives 401.
+Access: Public, no token needed for an APPROVED mentor with an ACTIVE account. Any other mentor is visible only to that mentor and to ADMIN (with a token), others get 404. A bad token gives 401.
 
 Responses: `200` MentorResponse, `401`, `404`.
 
@@ -252,7 +252,7 @@ Access: Mentor. Responses: `204`, `401`, `403`, `404`, `409` slot is HELD or BOO
 
 Future slots of one mentor in every status, sorted by start. Only `AVAILABLE` can be booked. Access: Public, no token needed. Query: `from`, `to` (default: now to 30 days ahead, maximum range 31 days).
 
-Responses: `200` array of SlotResponse, `400` range too large, `404` mentor not found or not APPROVED.
+Responses: `200` array of SlotResponse, `400` range too large, `404` mentor not found, not APPROVED or not ACTIVE.
 
 ## Verification
 

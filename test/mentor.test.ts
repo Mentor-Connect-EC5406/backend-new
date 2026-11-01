@@ -45,6 +45,31 @@ describe("mentor profile and approval", () => {
     expect((await api("GET", `/api/mentors/${profile.id}`, { token: pending.token })).status).toBe(200);
   });
 
+  it("hides a suspended mentor until the account is active again", async () => {
+    const { mentor, mentorId, slotId, admin: adm } = await approvedMentor();
+    const student = await registered("STUDENT");
+    const name = `Hidden${crypto.randomUUID().slice(0, 8)}`;
+    await api("PUT", "/api/users/me", { token: mentor.token, body: { firstName: name, lastName: "Silva" } });
+    await api("PUT", `/api/students/me/saved-mentors/${mentorId}`, { token: student.token });
+    const setStatus = (accountStatus: string) => api("PUT", `/api/users/${mentor.id}/status`, { token: adm.token, body: { accountStatus } });
+    const savedCount = async () => (await api("GET", "/api/students/me/saved-mentors", { token: student.token })).body.totalElements;
+
+    expect((await setStatus("SUSPENDED")).status).toBe(200);
+    expect((await api("GET", `/api/mentors?query=${name}`)).body.totalElements).toBe(0);
+    expect((await api("GET", `/api/mentors/${mentorId}`)).status).toBe(404);
+    expect((await api("GET", `/api/mentors/${mentorId}/slots`)).status).toBe(404);
+    expect((await api("GET", `/api/mentors/${mentorId}/reviews`)).status).toBe(404);
+    expect((await api("GET", `/api/mentors/${mentorId}`, { token: adm.token })).status).toBe(200);
+    expect((await api("PUT", `/api/students/me/saved-mentors/${mentorId}`, { token: student.token })).status).toBe(404);
+    expect(await savedCount()).toBe(0);
+    expect((await api("POST", "/api/bookings", { token: student.token, body: { slotId } })).status).toBe(409);
+
+    await setStatus("ACTIVE");
+    expect((await api("GET", `/api/mentors?query=${name}`)).body.totalElements).toBe(1);
+    expect(await savedCount()).toBe(1);
+    expect((await api("POST", "/api/bookings", { token: student.token, body: { slotId } })).status).toBe(201);
+  });
+
   it("needs a profile for mentor routes", async () => {
     const mentor = await registered("MENTOR");
     expect((await api("GET", "/api/mentors/me", { token: mentor.token })).status).toBe(404);

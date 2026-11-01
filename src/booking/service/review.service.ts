@@ -46,9 +46,9 @@ export async function createReview(
   return toReviewResponse(row);
 }
 
-// public, only for APPROVED mentors
+// public, only for APPROVED and ACTIVE mentors
 export async function listMentorReviews(env: Env, mentorId: string, q: PageQuery): Promise<Page<MentorReviewResponse>> {
-  if (!(await repo.mentorIsApproved(env.DB, mentorId))) throw notFound("Mentor not found");
+  if (!(await repo.mentorIsPublic(env.DB, mentorId))) throw notFound("Mentor not found");
   const { rows, total } = await repo.listPublicByMentor(env.DB, mentorId, q.size, offsetOf(q));
   return toPage(rows.map(toMentorReviewResponse), q, total);
 }

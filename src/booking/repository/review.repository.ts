@@ -23,8 +23,14 @@ export const insertAndRate = (db: D1Database, r: ReviewRow) =>
       .bind(r.mentor_id, r.created_at),
   ]);
 
-export const mentorIsApproved = async (db: D1Database, mentorId: string) =>
-  (await db.prepare("SELECT 1 AS found FROM mentors WHERE id = ? AND verification_status = 'APPROVED'").bind(mentorId).first()) !== null;
+export const mentorIsPublic = async (db: D1Database, mentorId: string) =>
+  (await db
+    .prepare(
+      `SELECT 1 AS found FROM mentors m JOIN users u ON u.id = m.user_id
+       WHERE m.id = ? AND m.verification_status = 'APPROVED' AND u.account_status = 'ACTIVE'`,
+    )
+    .bind(mentorId)
+    .first()) !== null;
 
 export async function listPublicByMentor(db: D1Database, mentorId: string, limit: number, offset: number) {
   const [rows, count] = await db.batch([

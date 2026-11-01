@@ -26,7 +26,10 @@ export const findSlot = (db: D1Database, id: string) =>
 
 export const findMentor = (db: D1Database, id: string) =>
   db
-    .prepare("SELECT id, user_id, hourly_rate_cents, currency, verification_status FROM mentors WHERE id = ?")
+    .prepare(
+      `SELECT m.id, m.user_id, m.hourly_rate_cents, m.currency, m.verification_status, u.account_status
+       FROM mentors m JOIN users u ON u.id = m.user_id WHERE m.id = ?`,
+    )
     .bind(id)
     .first<MentorRow>();
 

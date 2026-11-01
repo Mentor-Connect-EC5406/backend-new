@@ -64,6 +64,7 @@ export async function createBooking(env: Env, user: CurrentUser, req: CreateBook
   if (!slot) throw notFound("Slot not found");
   const mentor = await repo.findMentor(env.DB, slot.mentor_id);
   if (!mentor || mentor.verification_status !== "APPROVED") throw conflict("Mentor is not approved");
+  if (mentor.account_status !== "ACTIVE") throw conflict("Mentor is not available");
   if (slot.status !== "AVAILABLE" || Date.parse(slot.start_time) <= Date.now()) {
     throw conflict("Slot is not available");
   }

@@ -171,7 +171,7 @@ The cron trigger `* * * * *` (every minute) runs the booking expiry job.
 
 1. The client asks for an upload url (`POST .../avatar-upload-url`, `.../verification-upload-url` or `.../attachment-upload-url` with `{ "contentType": "image/png" }`) and gets `{ uploadUrl, key, expiresInSeconds: 300 }`.
 2. The client sends the file with `PUT uploadUrl` and the same `Content-Type`, straight to R2.
-3. The client saves `key` (`PUT /api/users/me` `profileImageKey`, `POST /api/mentors/me/verifications` `documentKey`, or a message `attachmentKey`). The API checks the key belongs to the caller and that the file exists and is within the size limit (avatar 5 MB, document and attachment 10 MB).
+3. The client saves `key` (`PUT /api/users/me` `profileImageKey`, `POST /api/mentors/me/verifications` `documentKey`, or a message `attachmentKey`). The API checks the key belongs to the caller and that the file exists and is within the size limit (avatar 2 MB, document and attachment 10 MB).
 4. Files are read through `GET /api/files/{key}`. Avatars need no token, so they work in `<img src>`. Verification documents need the admin or the owning mentor; chat attachments need a participant. Admins also get a 300 second `documentUrl` in `GET /api/verifications`.
 
 Keys look like `avatars/{userId}/{uuid}.png`, `verifications/{mentorId}/{uuid}.pdf` and `attachments/{conversationId}/{uuid}.png`. Both buckets need a CORS policy that allows `PUT` and `GET` with the `Content-Type` header from the frontend origins.

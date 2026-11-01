@@ -12,7 +12,7 @@ import type {
 import type { SlotRow } from "../entity/mentor.entity";
 import * as mentorRepo from "../repository/mentor.repository";
 import * as repo from "../repository/slot.repository";
-import { requireMentor } from "./mentor.service";
+import { isPublicMentor, requireMentor } from "./mentor.service";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -80,10 +80,10 @@ export async function deleteSlot(db: D1Database, me: CurrentUser, slotId: string
   await repo.remove(db, slot.id);
 }
 
-// only APPROVED mentors are bookable
+// only APPROVED and ACTIVE mentors are bookable
 export async function listPublicSlots(db: D1Database, mentorId: string, q: PublicSlotsQuery): Promise<SlotResponse[]> {
   const mentor = await mentorRepo.findWithUserById(db, mentorId);
-  if (!mentor || mentor.verification_status !== "APPROVED") throw notFound("Mentor not found");
+  if (!mentor || !isPublicMentor(mentor)) throw notFound("Mentor not found");
 
   const now = Date.now();
   const from = q.from ?? new Date(now).toISOString();

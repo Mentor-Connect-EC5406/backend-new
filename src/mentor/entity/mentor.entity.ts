@@ -24,6 +24,7 @@ export type MentorWithUserRow = MentorRow & {
   first_name: string;
   last_name: string;
   profile_image_key: string | null;
+  account_status: string;
 };
 
 export type MentorExpertiseRow = {
