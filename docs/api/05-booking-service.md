@@ -120,7 +120,7 @@ Responses: `200` BookingResponse, `401`, `403`, `404`, `409` booking is not `PEN
 
 ### POST /api/bookings/{id}/cancel
 
-Only `PENDING` or `CONFIRMED` bookings can be cancelled. The slot becomes `AVAILABLE` again and the session (if any) becomes `CANCELLED`. The money is not returned automatically. For a paid booking the student asks for a refund with `POST /api/refunds` (Secondary, see `06-payment-service.md`). Access: the student or mentor of the booking.
+Only `PENDING` or `CONFIRMED` bookings can be cancelled, until 12 hours before `scheduledStart`. The slot becomes `AVAILABLE` again and the session (if any) becomes `CANCELLED`. The money is not returned automatically. For a paid booking the student asks for a refund with `POST /api/refunds` (Secondary, see `06-payment-service.md`). Access: the student or mentor of the booking.
 
 ```json
 { "reason": "I have an exam that day" }

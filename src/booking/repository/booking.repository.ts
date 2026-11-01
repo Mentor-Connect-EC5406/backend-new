@@ -129,6 +129,64 @@ export async function cancel(db: D1Database, b: BookingRow, reason: string | nul
   return update!.meta.changes === 1;
 }
 
+// moves a booking in one batch: new slot taken, old booking RESCHEDULED, new booking inserted, old slot and session released
+export async function reschedule(
+  db: D1Database,
+  old: BookingRow,
+  b: BookingRow,
+  slotVersion: number,
+  session: { id: string; meetingUrl: string } | null,
+) {
+  const now = b.created_at;
+  const slotStatus = old.status === "CONFIRMED" ? "BOOKED" : "HELD";
+  const stmts = [
+    db
+      .prepare(
+        `UPDATE availability_slots SET status = ?1, version = version + 1, updated_at = ?2
+         WHERE id = ?3 AND status = 'AVAILABLE' AND version = ?4`,
+      )
+      .bind(slotStatus, now, b.slot_id, slotVersion),
+    db
+      .prepare(
+        `UPDATE bookings SET status = 'RESCHEDULED', expires_at = NULL, updated_at = ?1
+         WHERE id = ?2 AND status = ?3
+           AND EXISTS (SELECT 1 FROM availability_slots WHERE id = ?4 AND status = ?5 AND version = ?6)`,
+      )
+      .bind(now, old.id, old.status, b.slot_id, slotStatus, slotVersion + 1),
+    db
+      .prepare(
+        `INSERT INTO bookings (id, student_id, mentor_id, slot_id, scheduled_start, scheduled_end, topic, price_cents,
+                               currency, status, cancellation_reason, rescheduled_from_id, expires_at, created_at, updated_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?
+         WHERE (SELECT status FROM bookings WHERE id = ?) = 'RESCHEDULED'`,
+      )
+      .bind(
+        b.id, b.student_id, b.mentor_id, b.slot_id, b.scheduled_start, b.scheduled_end, b.topic, b.price_cents,
+        b.currency, b.status, b.rescheduled_from_id, b.expires_at, b.created_at, b.updated_at, old.id,
+      ),
+    releaseSlot(db, old.slot_id, now),
+    db
+      .prepare(
+        `UPDATE mentoring_sessions SET status = 'CANCELLED', updated_at = ?1
+         WHERE booking_id = ?2 AND status IN ('SCHEDULED', 'IN_PROGRESS')
+           AND (SELECT status FROM bookings WHERE id = ?2) = 'RESCHEDULED'`,
+      )
+      .bind(now, old.id),
+  ];
+  if (session) {
+    stmts.push(
+      db
+        .prepare(
+          `INSERT INTO mentoring_sessions (id, booking_id, meeting_url, meeting_provider, status, created_at, updated_at)
+           SELECT ?1, ?2, ?3, 'JITSI', 'SCHEDULED', ?4, ?4 WHERE EXISTS (SELECT 1 FROM bookings WHERE id = ?2)`,
+        )
+        .bind(session.id, b.id, session.meetingUrl, now),
+    );
+  }
+  const results = await db.batch(stmts);
+  return results[2]!.meta.changes === 1;
+}
+
 export const findExpired = async (db: D1Database, now: string, limit: number) =>
   (
     await db

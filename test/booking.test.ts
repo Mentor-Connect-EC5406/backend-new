@@ -139,6 +139,94 @@ describe("accept, decline and cancel", () => {
   });
 });
 
+describe("12 hour change window", () => {
+  it("blocks cancel and reschedule close to the start, for both parties", async () => {
+    const { mentor } = await approvedMentor();
+    const student = await registered("STUDENT");
+    const soon = await slot(mentor, 11 * HOUR);
+    const other = await slot(mentor, 72 * HOUR);
+    const { body: booking } = await api("POST", "/api/bookings", { token: student.token, body: { slotId: soon } });
+
+    expect((await api("POST", `/api/bookings/${booking.id}/cancel`, { token: student.token })).status).toBe(409);
+    expect((await api("POST", `/api/bookings/${booking.id}/cancel`, { token: mentor.token })).status).toBe(409);
+    const moved = await api("POST", `/api/bookings/${booking.id}/reschedule`, { token: student.token, body: { slotId: other } });
+    expect(moved.status).toBe(409);
+    expect(moved.body.message).toContain("12 hours");
+    expect(await slotStatus(soon)).toBe("HELD");
+  });
+
+  it("still lets the mentor decline close to the start", async () => {
+    const { mentor } = await approvedMentor();
+    const student = await registered("STUDENT");
+    const soon = await slot(mentor, 11 * HOUR);
+    const { body: booking } = await api("POST", "/api/bookings", { token: student.token, body: { slotId: soon } });
+    expect((await api("POST", `/api/bookings/${booking.id}/decline`, { token: mentor.token })).status).toBe(200);
+  });
+});
+
+describe("reschedule", () => {
+  it("moves a confirmed booking to a new slot with a new session", async () => {
+    const { booking, student, mentor, slotId } = await book();
+    await api("POST", `/api/bookings/${booking.id}/accept`, { token: mentor.token });
+    const target = await slot(mentor, 72 * HOUR);
+
+    const res = await api("POST", `/api/bookings/${booking.id}/reschedule`, { token: student.token, body: { slotId: target } });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: "CONFIRMED", slotId: target, rescheduledFromId: booking.id, expiresAt: null, priceCents: booking.priceCents });
+    expect(res.body.id).not.toBe(booking.id);
+
+    expect((await api("GET", `/api/bookings/${booking.id}`, { token: student.token })).body.status).toBe("RESCHEDULED");
+    expect(await slotStatus(slotId)).toBe("AVAILABLE");
+    expect(await slotStatus(target)).toBe("BOOKED");
+    expect((await api("GET", `/api/bookings/${booking.id}/session`, { token: student.token })).body.status).toBe("CANCELLED");
+    const session = await api("GET", `/api/bookings/${res.body.id}/session`, { token: mentor.token });
+    expect(session.body).toMatchObject({ status: "SCHEDULED" });
+    expect(session.body.meetingUrl).toContain(res.body.id.slice(0, 8));
+
+    const notes = await api("GET", "/api/notifications", { token: mentor.token });
+    expect(notes.body.content.some((n: { type: string }) => n.type === "BOOKING_RESCHEDULED")).toBe(true);
+    expect((await api("POST", `/api/bookings/${booking.id}/reschedule`, { token: student.token, body: { slotId } })).status).toBe(409);
+  });
+
+  it("keeps a pending booking pending, and the mentor can accept the new one", async () => {
+    const { booking, student, mentor, slotId } = await book();
+    const target = await slot(mentor, 72 * HOUR);
+    const res = await api("POST", `/api/bookings/${booking.id}/reschedule`, { token: student.token, body: { slotId: target } });
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe("PENDING");
+    expect(res.body.expiresAt).not.toBeNull();
+    expect(await slotStatus(slotId)).toBe("AVAILABLE");
+    expect(await slotStatus(target)).toBe("HELD");
+    expect((await api("GET", `/api/bookings/${booking.id}/session`, { token: student.token })).status).toBe(404);
+
+    expect((await api("POST", `/api/bookings/${res.body.id}/accept`, { token: mentor.token })).body.status).toBe("CONFIRMED");
+    expect(await slotStatus(target)).toBe("BOOKED");
+  });
+
+  it("checks the caller, the body and the new slot", async () => {
+    const { booking, student, mentor, slotId } = await book();
+    const target = await slot(mentor, 72 * HOUR);
+    const path = `/api/bookings/${booking.id}/reschedule`;
+    expect((await api("POST", path, { body: { slotId: target } })).status).toBe(401);
+    expect((await api("POST", path, { token: mentor.token, body: { slotId: target } })).status).toBe(403);
+    const stranger = await registered("STUDENT");
+    expect((await api("POST", path, { token: stranger.token, body: { slotId: target } })).status).toBe(403);
+    expect((await api("POST", path, { token: student.token, body: { slotId: "x" } })).status).toBe(400);
+    expect((await api("POST", path, { token: student.token, body: { slotId: crypto.randomUUID() } })).status).toBe(404);
+    expect((await api("POST", `/api/bookings/${crypto.randomUUID()}/reschedule`, { token: student.token, body: { slotId: target } })).status).toBe(404);
+
+    const otherMentor = await approvedMentor();
+    expect((await api("POST", path, { token: student.token, body: { slotId: otherMentor.slotId } })).status).toBe(409);
+    const shorter = await slot(mentor, 96 * HOUR, 30);
+    expect((await api("POST", path, { token: student.token, body: { slotId: shorter } })).status).toBe(409);
+    expect((await api("POST", path, { token: student.token, body: { slotId } })).status).toBe(409);
+    const taken = await slot(mentor, 120 * HOUR);
+    await api("POST", "/api/bookings", { token: stranger.token, body: { slotId: taken } });
+    expect((await api("POST", path, { token: student.token, body: { slotId: taken } })).status).toBe(409);
+    expect((await api("GET", `/api/bookings/${booking.id}`, { token: student.token })).body.status).toBe("PENDING");
+  });
+});
+
 describe("session and review", () => {
   it("runs the session in its window and updates the mentor rating after the review", async () => {
     const { mentor, mentorId } = await approvedMentor();

@@ -57,6 +57,8 @@ docs/database/schema/: source schemas from the Spring repo
 - The booking module may update availability_slots.status (HELD, BOOKED, AVAILABLE)
 - POST /api/bookings/{id}/accept: only the mentor of the booking, no real payment. Booking CONFIRMED, slot BOOKED, session created. POST /api/bookings/{id}/decline: only the mentor. Booking CANCELLED, slot AVAILABLE
 - A PENDING booking expires 24 hours after it is created, or at the slot start if that is sooner
+- Cancel and reschedule close 12 hours before the start (mentor decline is not limited)
+- POST /api/bookings/{id}/reschedule: only the student, PENDING or CONFIRMED, new AVAILABLE slot of the same mentor with the same length. Old booking RESCHEDULED, new booking keeps the status with rescheduled_from_id
 - Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
 - POST /api/bookings/{id}/session/complete: only the student of the booking, after scheduledStart. Booking and session COMPLETED
 - Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed). Update the mentor rating after a review

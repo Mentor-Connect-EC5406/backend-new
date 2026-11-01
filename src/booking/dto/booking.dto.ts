@@ -17,6 +17,10 @@ export const cancelBookingSchema = z.object({
   reason: z.string().trim().max(500).optional(),
 });
 
+export const rescheduleBookingSchema = z.object({
+  slotId: z.string().uuid("must be a valid UUID"),
+});
+
 export const createReviewSchema = z.object({
   rating: z.number({ error: "must be a number from 1 to 5" }).int("must be a whole number").min(1).max(5),
   comment: z.string().trim().max(1000).optional(),
@@ -29,6 +33,7 @@ export const listReviewsQuerySchema = pageQuerySchema.extend({
 export type CreateBookingRequest = z.infer<typeof createBookingSchema>;
 export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
 export type CancelBookingRequest = z.infer<typeof cancelBookingSchema>;
+export type RescheduleBookingRequest = z.infer<typeof rescheduleBookingSchema>;
 export type CreateReviewRequest = z.infer<typeof createReviewSchema>;
 export type ListReviewsQuery = z.infer<typeof listReviewsQuerySchema>;
 

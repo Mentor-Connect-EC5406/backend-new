@@ -48,7 +48,8 @@ Known gaps:
 | booking | GET | /api/bookings/{id} | ✅ | ✅ |
 | booking | POST | /api/bookings/{id}/accept | ✅ | ⬜ |
 | booking | POST | /api/bookings/{id}/decline | ✅ | ⬜ |
-| booking | POST | /api/bookings/{id}/cancel | ✅ | ✅ |
+| booking | POST | /api/bookings/{id}/reschedule | ✅ | ⬜ |
+| booking | POST | /api/bookings/{id}/cancel | ✅ | ⬜ |
 | booking | GET | /api/bookings/{id}/session | ✅ | ✅ |
 | booking | POST | /api/bookings/{id}/session/start | ✅ | ⬜ |
 | booking | POST | /api/bookings/{id}/session/complete | ✅ | ⬜ |
