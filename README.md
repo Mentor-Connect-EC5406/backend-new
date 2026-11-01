@@ -404,6 +404,7 @@ Collections are in `docs/api/postman/edge-api/`:
 |---|---|
 | `mentorconnect-edge-api.postman_collection.json` | register, user, mentor, student profile and upload-url requests |
 | `mentorconnect-edge-api-flow.postman_collection.json` | end-to-end flow: setup, booking, session, notifications, conversations (56 requests) |
+| `mentorconnect-edge-api-frontend.postman_collection.json` | frontend handoff features: LKR, slot rules, public mentor pages, search filters, extended profiles, saved mentors, goals, reports, admin stats (84 requests) |
 | `mentorconnect-edge-api-asgardeo.postman_collection.json` | real Asgardeo login (OAuth 2.0 with PKCE): me before register, register, me after |
 
 All requests use real Asgardeo access tokens.

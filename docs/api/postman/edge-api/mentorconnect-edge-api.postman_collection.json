@@ -2666,14 +2666,14 @@
           "response": []
         },
         {
-          "name": "6.3 search as mentor (403)",
+          "name": "6.3 search as mentor, search is public (200)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status 403', function () { pm.expect([403]).to.include(pm.response.code); });"
+                  "pm.test('status 200', function () { pm.expect([200]).to.include(pm.response.code); });"
                 ]
               }
             }
@@ -2999,7 +2999,7 @@
                 "exec": [
                   "pm.test(\"status 200\", function () { pm.expect([200]).to.include(pm.response.code); });",
                   "var j = pm.response.json();",
-                  "pm.test(\"values saved\", function () { pm.expect(j.university).to.equal(\"University of Ruhuna\"); pm.expect(j.academicYear).to.equal(3); pm.expect(j.interests).to.equal(\"Java, Cloud\"); });"
+                  "pm.test(\"values saved\", function () { pm.expect(j.university).to.equal(\"University of Ruhuna\"); pm.expect(j.academicYear).to.equal(3); pm.expect(j.interests).to.eql([\"Java\", \"Cloud\"]); });"
                 ]
               }
             }
@@ -3018,7 +3018,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"university\": \"University of Ruhuna\",\n  \"faculty\": \"Engineering\",\n  \"degree\": \"Computer Engineering\",\n  \"academicYear\": 3,\n  \"bio\": \"Interested in backend development\",\n  \"interests\": \"Java, Cloud\"\n}",
+              "raw": "{\n  \"university\": \"University of Ruhuna\",\n  \"faculty\": \"Engineering\",\n  \"degree\": \"Computer Engineering\",\n  \"academicYear\": 3,\n  \"bio\": \"Interested in backend development\",\n  \"interests\":[\"Java\",\"Cloud\"]\n}",
               "options": {
                 "raw": {
                   "language": "json"
