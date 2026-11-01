@@ -113,10 +113,36 @@ Response `200` StudentProfileResponse:
   "degree": "Computer Engineering",
   "academicYear": 3,
   "bio": "Interested in backend development",
-  "interests": "Java, Cloud",
+  "interests": ["Software", "Cloud"],
+  "skills": ["Java"],
+  "headline": "Final year engineering student",
+  "location": "Galle",
+  "links": { "linkedin": "", "github": "https://github.com/kamal", "website": "" },
+  "experience": [
+    { "id": "e1", "role": "Intern", "organization": "WSO2", "startMonth": "2026-01", "endMonth": null, "description": "Backend work" }
+  ],
+  "education": [
+    { "id": "d1", "school": "University of Ruhuna", "degree": "BSc", "field": "Computer Engineering", "startYear": "2023", "endYear": null }
+  ],
+  "certificates": [
+    { "id": "c1", "name": "AWS Cloud Practitioner", "issuer": "AWS", "issuedMonth": "2026-03", "credentialUrl": "" }
+  ],
+  "projects": [
+    { "id": "p1", "title": "MentorConnect", "description": "Mentoring platform", "url": "", "skills": ["TypeScript"] }
+  ],
+  "languages": [{ "name": "Sinhala", "level": "Native" }],
+  "workPreferences": {
+    "openToOpportunities": true,
+    "desiredRoles": ["Backend Engineer"],
+    "workTypes": ["Internship"],
+    "arrangements": ["Hybrid", "Remote"]
+  },
+  "visibility": { "isPublic": false, "showEmail": false, "showPhone": false },
   "updatedAt": "2026-11-01T10:00:00.000Z"
 }
 ```
+
+Empty sections come back as `""`, `[]` or `false`. No endpoint returns a student profile to other users yet.
 
 Responses: `200`, `401`, `403` not a STUDENT.
 
@@ -133,14 +159,25 @@ Request:
   "degree": "Computer Engineering",
   "academicYear": 3,
   "bio": "Interested in backend development",
-  "interests": "Java, Cloud"
+  "interests": ["Software", "Cloud"]
 }
 ```
+
+Also accepts every section shown in the response above. A field that is not sent keeps its value.
 
 | Field | Rule |
 |---|---|
 | `academicYear` | optional, 1 to 10 |
-| all others | optional text |
+| `bio` | optional, up to 600 characters |
+| `headline` | optional, up to 120 characters |
+| `interests` | optional, up to 5 |
+| `skills` | optional, up to 10 |
+| `languages` | optional, up to 6, level `Basic`, `Conversational`, `Fluent` or `Native` |
+| `experience`, `education`, `certificates`, `projects` | optional, up to 10 entries each, descriptions up to 400 characters |
+| months, years | `YYYY-MM`, `YYYY` |
+| `links`, `credentialUrl`, project `url` | empty, or start with `http://` or `https://` |
+| `workPreferences.desiredRoles` | up to 5 |
+| `university`, `faculty`, `degree` | optional text |
 
 Responses: `200` StudentProfileResponse, `400`, `401`, `403`.
 

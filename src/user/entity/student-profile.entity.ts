@@ -7,5 +7,6 @@ export type StudentProfileRow = {
   academic_year: number | null;
   bio: string | null;
   interests: string | null;
+  profile_extras: string;
   updated_at: string;
 };

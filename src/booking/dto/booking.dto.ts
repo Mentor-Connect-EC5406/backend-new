@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { pageQuerySchema } from "../../util/pagination";
-import type { BookingDetailRow, ReviewRow, SessionRow } from "../entity/booking.entity";
+import type { BookingDetailRow, MentorReviewRow, ReviewRow, SessionRow } from "../entity/booking.entity";
 
 export const createBookingSchema = z.object({
   slotId: z.string().uuid("must be a valid UUID"),
@@ -109,6 +109,22 @@ export const toSessionResponse = (r: SessionRow): SessionResponse => ({
   actualStart: r.actual_start,
   actualEnd: r.actual_end,
   status: r.status,
+});
+
+export type MentorReviewResponse = {
+  id: string;
+  author: string | null;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+};
+
+export const toMentorReviewResponse = (r: MentorReviewRow): MentorReviewResponse => ({
+  id: r.id,
+  author: r.author,
+  rating: r.rating,
+  comment: r.comment,
+  createdAt: r.created_at,
 });
 
 export const toReviewResponse = (r: ReviewRow): ReviewResponse => ({

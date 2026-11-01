@@ -3,7 +3,7 @@ import type { StudentProfileRow } from "../entity/student-profile.entity";
 
 export const findByUserId = (db: D1Database, userId: string) =>
   db
-    .prepare("SELECT id, user_id, university, faculty, degree, academic_year, bio, interests, updated_at FROM student_profiles WHERE user_id = ?")
+    .prepare("SELECT id, user_id, university, faculty, degree, academic_year, bio, interests, profile_extras, updated_at FROM student_profiles WHERE user_id = ?")
     .bind(userId)
     .first<StudentProfileRow>();
 
@@ -16,13 +16,13 @@ export async function insertEmpty(db: D1Database, id: string, userId: string, no
 }
 
 // fields that are not sent keep their value
-export async function update(db: D1Database, userId: string, r: UpdateStudentProfileRequest, now: string) {
+export async function update(db: D1Database, userId: string, r: UpdateStudentProfileRequest, extras: string, now: string) {
   await db
     .prepare(
       `UPDATE student_profiles SET university = COALESCE(?, university), faculty = COALESCE(?, faculty),
          degree = COALESCE(?, degree), academic_year = COALESCE(?, academic_year), bio = COALESCE(?, bio),
-         interests = COALESCE(?, interests), updated_at = ? WHERE user_id = ?`,
+         interests = COALESCE(?, interests), profile_extras = ?, updated_at = ? WHERE user_id = ?`,
     )
-    .bind(r.university ?? null, r.faculty ?? null, r.degree ?? null, r.academicYear ?? null, r.bio ?? null, r.interests ?? null, now, userId)
+    .bind(r.university ?? null, r.faculty ?? null, r.degree ?? null, r.academicYear ?? null, r.bio ?? null, r.interests ? JSON.stringify(r.interests) : null, extras, now, userId)
     .run();
 }

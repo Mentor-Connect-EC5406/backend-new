@@ -1,13 +1,15 @@
-import { conflict } from "../../exception/api-error";
-import { offsetOf, toPage, type Page } from "../../util/pagination";
+import { conflict, notFound } from "../../exception/api-error";
+import { offsetOf, toPage, type Page, type PageQuery } from "../../util/pagination";
 import { nowIso } from "../../util/time";
 import { newId } from "../../util/uuid";
 import type { CurrentUser } from "../../config/current-user";
 import type { Env } from "../../config/env";
 import {
+  toMentorReviewResponse,
   toReviewResponse,
   type CreateReviewRequest,
   type ListReviewsQuery,
+  type MentorReviewResponse,
   type ReviewResponse,
 } from "../dto/booking.dto";
 import type { ReviewRow } from "../entity/booking.entity";
@@ -42,6 +44,13 @@ export async function createReview(
     throw e;
   }
   return toReviewResponse(row);
+}
+
+// public, only for APPROVED mentors
+export async function listMentorReviews(env: Env, mentorId: string, q: PageQuery): Promise<Page<MentorReviewResponse>> {
+  if (!(await repo.mentorIsApproved(env.DB, mentorId))) throw notFound("Mentor not found");
+  const { rows, total } = await repo.listPublicByMentor(env.DB, mentorId, q.size, offsetOf(q));
+  return toPage(rows.map(toMentorReviewResponse), q, total);
 }
 
 export async function listReviews(env: Env, q: ListReviewsQuery): Promise<Page<ReviewResponse>> {

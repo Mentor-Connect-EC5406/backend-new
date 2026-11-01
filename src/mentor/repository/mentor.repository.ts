@@ -13,36 +13,52 @@ export const findWithUserById = (db: D1Database, id: string) =>
 export const findWithUserByUserId = (db: D1Database, userId: string) =>
   db.prepare(`${WITH_USER} WHERE m.user_id = ?`).bind(userId).first<MentorWithUserRow>();
 
-export async function insert(db: D1Database, id: string, userId: string, r: UpsertMentorRequest, now: string) {
+export async function insert(db: D1Database, id: string, userId: string, r: UpsertMentorRequest, extras: string, now: string) {
   await db
     .prepare(
-      `INSERT INTO mentors (id, user_id, title, organization, industry, bio, experience_years, hourly_rate_cents, currency, verification_status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
+      `INSERT INTO mentors (id, user_id, title, organization, industry, bio, experience_years, hourly_rate_cents, currency, skills, profile_extras, verification_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
     )
-    .bind(id, userId, r.title, r.organization ?? null, r.industry ?? null, r.bio ?? null, r.experienceYears, r.hourlyRateCents, r.currency ?? "LKR", now, now)
+    .bind(id, userId, r.title, r.organization ?? null, r.industry ?? null, r.bio ?? null, r.experienceYears, r.hourlyRateCents ?? 0, r.currency ?? "LKR", JSON.stringify(r.skills ?? []), extras, now, now)
     .run();
 }
 
-export async function update(db: D1Database, id: string, r: UpsertMentorRequest, now: string) {
+export async function update(db: D1Database, id: string, r: UpsertMentorRequest, extras: string, now: string) {
   await db
     .prepare(
-      `UPDATE mentors SET title = ?, organization = ?, industry = ?, bio = ?, experience_years = ?, hourly_rate_cents = ?,
-         currency = COALESCE(?, currency), updated_at = ? WHERE id = ?`,
+      `UPDATE mentors SET title = ?, organization = ?, industry = ?, bio = ?, experience_years = ?, hourly_rate_cents = COALESCE(?, hourly_rate_cents),
+         currency = COALESCE(?, currency), skills = COALESCE(?, skills), profile_extras = ?, updated_at = ? WHERE id = ?`,
     )
-    .bind(r.title, r.organization ?? null, r.industry ?? null, r.bio ?? null, r.experienceYears, r.hourlyRateCents, r.currency ?? null, now, id)
+    .bind(r.title, r.organization ?? null, r.industry ?? null, r.bio ?? null, r.experienceYears, r.hourlyRateCents ?? null, r.currency ?? null, r.skills ? JSON.stringify(r.skills) : null, extras, now, id)
     .run();
 }
+
+const SEARCH_ORDER = {
+  rating: "m.rating_avg DESC",
+  price: "m.hourly_rate_cents ASC",
+  experience: "m.experience_years DESC",
+};
 
 export async function search(db: D1Database, f: SearchMentorsQuery) {
   const where = ["m.verification_status = 'APPROVED'"];
   const params: unknown[] = [];
-  if (f.q) {
-    where.push("(m.title LIKE ? OR m.organization LIKE ?)");
-    params.push(`%${f.q}%`, `%${f.q}%`);
+  const text = f.query ?? f.q;
+  if (text) {
+    where.push(`(u.first_name || ' ' || u.last_name LIKE ? OR m.title LIKE ? OR m.organization LIKE ? OR m.skills LIKE ?
+      OR EXISTS (SELECT 1 FROM mentor_expertises me JOIN expertises e ON e.id = me.expertise_id WHERE me.mentor_id = m.id AND e.name LIKE ?))`);
+    params.push(...Array<string>(5).fill(`%${text}%`));
   }
   if (f.industry) {
     where.push("m.industry = ? COLLATE NOCASE");
     params.push(f.industry);
+  }
+  if (f.industries?.length) {
+    where.push(`m.industry COLLATE NOCASE IN (${f.industries.map(() => "?").join(",")})`);
+    params.push(...f.industries);
+  }
+  if (f.maxRateCents !== undefined) {
+    where.push("m.hourly_rate_cents <= ?");
+    params.push(f.maxRateCents);
   }
   if (f.expertiseId) {
     where.push("EXISTS (SELECT 1 FROM mentor_expertises me WHERE me.mentor_id = m.id AND me.expertise_id = ?)");
@@ -55,11 +71,11 @@ export async function search(db: D1Database, f: SearchMentorsQuery) {
   const clause = where.join(" AND ");
 
   const total = await db
-    .prepare(`SELECT COUNT(*) AS n FROM mentors m WHERE ${clause}`)
+    .prepare(`SELECT COUNT(*) AS n FROM mentors m JOIN users u ON u.id = m.user_id WHERE ${clause}`)
     .bind(...params)
     .first<{ n: number }>();
   const rows = await db
-    .prepare(`${WITH_USER} WHERE ${clause} ORDER BY m.rating_avg DESC, m.id LIMIT ? OFFSET ?`)
+    .prepare(`${WITH_USER} WHERE ${clause} ORDER BY ${SEARCH_ORDER[f.sort ?? "rating"]}, m.id LIMIT ? OFFSET ?`)
     .bind(...params, f.size, f.page * f.size)
     .all<MentorWithUserRow>();
   return { rows: rows.results, total: total?.n ?? 0 };

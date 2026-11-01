@@ -27,7 +27,7 @@ slotController.delete("/api/mentors/me/slots/:slotId", authenticate, requireRole
   return c.body(null, 204);
 });
 
-slotController.get("/api/mentors/:id/slots", authenticate, requireRole("STUDENT"), async (c) => {
+slotController.get("/api/mentors/:id/slots", async (c) => {
   const query = parse(publicSlotsQuerySchema, c.req.query());
   return c.json(await service.listPublicSlots(c.env.DB, c.req.param("id"), query));
 });

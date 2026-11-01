@@ -14,6 +14,8 @@ export type MentorRow = {
   rating_avg: number;
   rating_count: number;
   verification_status: VerificationStatus;
+  skills: string;
+  profile_extras: string;
   created_at: string;
   updated_at: string;
 };
