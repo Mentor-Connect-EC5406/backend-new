@@ -55,7 +55,8 @@ docs/database/schema/: source schemas from the Spring repo
 - Roles: STUDENT, MENTOR, ADMIN
 - Double booking: unique index uq_bookings_active_slot and slot status. Create the booking and set the slot to HELD in one db.batch()
 - The booking module may update availability_slots.status (HELD, BOOKED, AVAILABLE)
-- POST /api/bookings/{id}/confirm: only the student of the booking, no real payment. Booking CONFIRMED, slot BOOKED
+- POST /api/bookings/{id}/accept: only the mentor of the booking, no real payment. Booking CONFIRMED, slot BOOKED, session created. POST /api/bookings/{id}/decline: only the mentor. Booking CANCELLED, slot AVAILABLE
+- A PENDING booking expires 24 hours after it is created, or at the slot start if that is sooner
 - Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
 - POST /api/bookings/{id}/session/complete: only the student of the booking, after scheduledStart. Booking and session COMPLETED
 - Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed). Update the mentor rating after a review

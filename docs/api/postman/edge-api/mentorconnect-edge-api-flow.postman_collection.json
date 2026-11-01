@@ -1334,12 +1334,12 @@
           ]
         },
         {
-          "name": "B10. Mentor cannot confirm (403)",
+          "name": "B10. Student cannot accept (403)",
           "request": {
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm",
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/accept",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1347,7 +1347,7 @@
                 "api",
                 "bookings",
                 "{{bookingId}}",
-                "confirm"
+                "accept"
               ]
             },
             "auth": {
@@ -1355,7 +1355,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{mentorToken}}",
+                  "value": "{{studentToken}}",
                   "type": "string"
                 }
               ]
@@ -1374,12 +1374,12 @@
           ]
         },
         {
-          "name": "B11. Student confirms booking (200 CONFIRMED)",
+          "name": "B11. Mentor accepts booking (200 CONFIRMED)",
           "request": {
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm",
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/accept",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1387,7 +1387,7 @@
                 "api",
                 "bookings",
                 "{{bookingId}}",
-                "confirm"
+                "accept"
               ]
             },
             "auth": {
@@ -1395,7 +1395,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{studentToken}}",
+                  "value": "{{mentorToken}}",
                   "type": "string"
                 }
               ]
@@ -1416,12 +1416,12 @@
           ]
         },
         {
-          "name": "B12. Confirm again, idempotent (200)",
+          "name": "B12. Accept again, idempotent (200)",
           "request": {
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm",
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/accept",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1429,7 +1429,7 @@
                 "api",
                 "bookings",
                 "{{bookingId}}",
-                "confirm"
+                "accept"
               ]
             },
             "auth": {
@@ -1437,7 +1437,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{studentToken}}",
+                  "value": "{{mentorToken}}",
                   "type": "string"
                 }
               ]
@@ -1452,6 +1452,46 @@
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
                   "const j = pm.response.json();",
                   "pm.test(\"still CONFIRMED\", () => pm.expect(j.status === 'CONFIRMED').to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "B12b. Mentor cannot decline a confirmed booking (409)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/decline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}",
+                "decline"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));"
                 ]
               }
             }

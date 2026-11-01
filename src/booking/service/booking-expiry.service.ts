@@ -15,7 +15,7 @@ export async function expirePendingBookings(env: Env): Promise<void> {
       userId: booking.student_id,
       type: "BOOKING_CANCELLED",
       title: "Booking expired",
-      message: `Your session on ${formatUtc(booking.scheduled_start)} was not confirmed in time and was cancelled`,
+      message: `Your session on ${formatUtc(booking.scheduled_start)} was not accepted in time and was cancelled`,
     });
   }
 }
