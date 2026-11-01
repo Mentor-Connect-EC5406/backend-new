@@ -33,13 +33,16 @@ export async function startSession(env: Env, user: CurrentUser, bookingId: strin
   return toSessionResponse((await repo.findByBooking(env.DB, bookingId))!);
 }
 
+// the student completes the session once its start time has passed; a mentor start is optional
 export async function completeSession(env: Env, user: CurrentUser, bookingId: string): Promise<SessionResponse> {
-  await loadForParty(env.DB, bookingId, user, ["MENTOR"]);
+  const booking = await loadForParty(env.DB, bookingId, user, ["STUDENT"]);
+  if (booking.status !== "CONFIRMED") throw conflict("Booking is not CONFIRMED");
   const session = await loadSession(env.DB, bookingId);
-  if (session.status !== "IN_PROGRESS") throw conflict("Session is not IN_PROGRESS");
+  if (session.status !== "SCHEDULED" && session.status !== "IN_PROGRESS") throw conflict("Session cannot be completed");
+  if (Date.now() < Date.parse(booking.scheduled_start)) throw conflict("The session has not started yet");
 
   if (!(await repo.complete(env.DB, session.id, bookingId, new Date().toISOString()))) {
-    throw conflict("Session is not IN_PROGRESS");
+    throw conflict("Session cannot be completed");
   }
   return toSessionResponse((await repo.findByBooking(env.DB, bookingId))!);
 }
