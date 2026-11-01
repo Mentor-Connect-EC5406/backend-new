@@ -61,3 +61,13 @@ export type VerificationRow = {
   submitted_at: string;
   reviewed_at: string | null;
 };
+
+export type VerificationDetailRow = VerificationRow & {
+  first_name: string;
+  last_name: string;
+  email: string;
+  title: string | null;
+  organization: string | null;
+  industry: string | null;
+  experience_years: number;
+};

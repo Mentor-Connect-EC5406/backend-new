@@ -196,7 +196,16 @@ export type VerificationResponse = {
   reviewedAt: string | null;
 };
 
-export type AdminVerificationResponse = VerificationResponse & { documentUrl: string | null };
+export type AdminVerificationResponse = VerificationResponse & {
+  documentUrl: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  title: string | null;
+  organization: string | null;
+  industry: string | null;
+  experienceYears: number;
+};
 
 export const verificationUploadUrlSchema = z.object({
   contentType: z.enum(["application/pdf", "image/jpeg", "image/png"], {

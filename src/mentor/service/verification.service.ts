@@ -13,7 +13,7 @@ import type {
   VerificationResponse,
   VerificationUploadUrlRequest,
 } from "../dto/mentor.dto";
-import type { VerificationRow } from "../entity/mentor.entity";
+import type { VerificationDetailRow, VerificationRow } from "../entity/mentor.entity";
 import * as repo from "../repository/verification.repository";
 import { requireMentor } from "./mentor.service";
 
@@ -31,9 +31,16 @@ const toResponse = (v: VerificationRow): VerificationResponse => ({
 const DOCUMENT_MAX_BYTES = 10 * MB;
 
 // documentUrl is a presigned R2 link valid for 300 seconds
-const toAdminResponse = async (env: Env, v: VerificationRow): Promise<AdminVerificationResponse> => ({
+const toAdminResponse = async (env: Env, v: VerificationDetailRow): Promise<AdminVerificationResponse> => ({
   ...toResponse(v),
   documentUrl: await downloadUrl(env, v.document_key),
+  firstName: v.first_name,
+  lastName: v.last_name,
+  email: v.email,
+  title: v.title,
+  organization: v.organization,
+  industry: v.industry,
+  experienceYears: v.experience_years,
 });
 
 export async function submit(

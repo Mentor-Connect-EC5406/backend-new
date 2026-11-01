@@ -292,12 +292,19 @@ Access: Mentor. Newest first. Response `200` array of VerificationResponse.
 
 ### GET /api/verifications
 
-Access: Admin. Query: `status`, `page`, `size`. Each item is a VerificationResponse plus a short-lived download link:
+Access: Admin. Query: `status`, `page`, `size`. Each item is a VerificationResponse plus the mentor's details and a short-lived download link:
 
 ```json
 {
   "id": "f0e1d2c3-b4a5-4968-8776-655443322110",
   "mentorId": "c1d2e3f4-0a1b-4c2d-8e3f-4a5b6c7d8e9f",
+  "firstName": "Nimal",
+  "lastName": "Silva",
+  "email": "nimal@example.com",
+  "title": "Senior Software Engineer",
+  "organization": "WSO2",
+  "industry": "Software",
+  "experienceYears": 8,
   "documentKey": "verifications/c1d2e3f4/7a9b.pdf",
   "documentUrl": "https://<account>.r2.cloudflarestorage.com/...",
   "status": "PENDING",
