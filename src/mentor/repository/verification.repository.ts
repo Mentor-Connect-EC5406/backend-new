@@ -1,4 +1,4 @@
-import type { VerificationRow } from "../entity/mentor.entity";
+import type { VerificationDetailRow, VerificationRow } from "../entity/mentor.entity";
 
 export const findById = (db: D1Database, id: string) =>
   db.prepare("SELECT * FROM mentor_verifications WHERE id = ?").bind(id).first<VerificationRow>();
@@ -25,16 +25,22 @@ export async function listByMentor(db: D1Database, mentorId: string) {
 }
 
 export async function list(db: D1Database, status: string | undefined, size: number, offset: number) {
-  const clause = status ? "WHERE status = ?" : "";
+  const clause = status ? "WHERE v.status = ?" : "";
   const params = status ? [status] : [];
   const total = await db
-    .prepare(`SELECT COUNT(*) AS n FROM mentor_verifications ${clause}`)
+    .prepare(`SELECT COUNT(*) AS n FROM mentor_verifications v ${clause}`)
     .bind(...params)
     .first<{ n: number }>();
   const rows = await db
-    .prepare(`SELECT * FROM mentor_verifications ${clause} ORDER BY submitted_at DESC, id LIMIT ? OFFSET ?`)
+    .prepare(
+      `SELECT v.*, u.first_name, u.last_name, u.email, m.title, m.organization, m.industry, m.experience_years
+       FROM mentor_verifications v
+       JOIN mentors m ON m.id = v.mentor_id
+       JOIN users u ON u.id = m.user_id
+       ${clause} ORDER BY v.submitted_at DESC, v.id LIMIT ? OFFSET ?`,
+    )
     .bind(...params, size, offset)
-    .all<VerificationRow>();
+    .all<VerificationDetailRow>();
   return { rows: rows.results, total: total?.n ?? 0 };
 }
 

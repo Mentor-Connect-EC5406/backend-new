@@ -64,6 +64,7 @@ describe("verification documents", () => {
     const adm = await admin();
     const list = await api("GET", "/api/verifications?status=PENDING", { token: adm.token });
     const item = list.body.content.find((v: { documentKey: string }) => v.documentKey === res.body.key);
+    expect(item).toMatchObject({ firstName: "Test", lastName: "User", email: mentor.email, title: "E", organization: null, industry: null, experienceYears: 1 });
     expect(item.documentUrl).toContain("X-Amz-Expires=300");
     const download = await fetch(item.documentUrl);
     expect(new Uint8Array(await download.arrayBuffer())).toEqual(PDF);
