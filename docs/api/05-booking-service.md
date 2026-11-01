@@ -4,14 +4,13 @@ Base URL (dev): `http://localhost:8083`. See `00-conventions.md` for headers, er
 
 ## Booking flow
 
-1. Student calls `POST /api/bookings`. The booking is `PENDING`, the slot is `HELD`, and `expiresAt` is set 15 minutes ahead
-2. Student calls `POST /api/payments/checkout` (payment-service) and pays on Lemon Squeezy
-3. The webhook reaches payment-service, which calls `PUT /internal/bookings/{id}/confirm`
-4. The booking is `CONFIRMED`, the slot is `BOOKED`, and a session is created as `SCHEDULED`
-5. Mentor starts and completes the session. The booking becomes `COMPLETED`
-6. Student can now review the booking
+1. Student calls `POST /api/bookings`. The booking is `PENDING`, the slot is `HELD`, and `expiresAt` is set 24 hours ahead, or to the slot start if that is sooner
+2. Mentor calls `POST /api/bookings/{id}/accept`. There is no payment step for now
+3. The booking is `CONFIRMED`, the slot is `BOOKED`, and a session is created as `SCHEDULED`
+4. After `scheduledStart` the student completes the session. The booking becomes `COMPLETED`
+5. Student can now review the booking
 
-If payment is not done by `expiresAt`, a scheduler cancels the booking and frees the slot.
+If the mentor declines, the booking is `CANCELLED` and the slot is `AVAILABLE`. If the mentor does not answer by `expiresAt`, a scheduler cancels the booking and frees the slot.
 
 `RESCHEDULED` is used by the reschedule feature and `NO_SHOW` is reserved for later. Neither has a Core endpoint.
 
@@ -102,6 +101,22 @@ Query: `status`, `page`, `size`. Response `200` page of BookingResponse.
 Access: the student or mentor of the booking, and Admin (read only).
 
 Responses: `200` BookingResponse, `401`, `403` not a party to this booking, `404`.
+
+### POST /api/bookings/{id}/accept
+
+`PENDING` to `CONFIRMED`, slot `HELD` to `BOOKED`, session created, `expiresAt` cleared. Safe to call twice: an already `CONFIRMED` booking returns `200` again. Access: the mentor of the booking. No body.
+
+Responses: `200` BookingResponse, `401`, `403`, `404`, `409` booking is not `PENDING` or has expired.
+
+### POST /api/bookings/{id}/decline
+
+`PENDING` to `CANCELLED`, slot back to `AVAILABLE`. Access: the mentor of the booking.
+
+```json
+{ "reason": "I am not available that day" }
+```
+
+`reason` is optional, up to 500 characters. Responses: `200` BookingResponse with status `CANCELLED`, `400`, `401`, `403`, `404`, `409` booking is not `PENDING`.
 
 ### POST /api/bookings/{id}/cancel
 

@@ -302,7 +302,8 @@ Login itself happens in Asgardeo, not in this API.
 | POST | `/api/bookings` | Student |
 | GET | `/api/bookings` | Student, Mentor (`status`, `page`, `size`) |
 | GET | `/api/bookings/{id}` | The student, the mentor, Admin |
-| POST | `/api/bookings/{id}/confirm` | The student of the booking |
+| POST | `/api/bookings/{id}/accept` | The mentor of the booking |
+| POST | `/api/bookings/{id}/decline` | The mentor of the booking (optional `reason`) |
 | POST | `/api/bookings/{id}/cancel` | The student or mentor (optional `reason`) |
 | GET | `/api/bookings/{id}/session` | The student or mentor |
 | POST | `/api/bookings/{id}/session/start` | The mentor |
@@ -334,10 +335,10 @@ Login itself happens in Asgardeo, not in this API.
 
 - Roles: `STUDENT`, `MENTOR`, `ADMIN`. A `SUSPENDED` account gets 403 on login and on every protected route.
 - Only `APPROVED` mentors can be found in search, have public slots, and be booked. A new mentor profile starts as `PENDING`; an admin approving a verification sets the mentor to `APPROVED`.
-- Slot status flow: `AVAILABLE` to `HELD` (booking created) to `BOOKED` (confirmed). Cancel or expiry sets it back to `AVAILABLE`. `BLOCKED` is set by the mentor.
+- Slot status flow: `AVAILABLE` to `HELD` (booking created) to `BOOKED` (mentor accepted). Decline, cancel or expiry sets it back to `AVAILABLE`. `BLOCKED` is set by the mentor.
 - Booking flow:
-  1. The student creates a booking: `PENDING`, the slot is `HELD`, `expiresAt` is 15 minutes ahead. The booking and the hold are written in one `db.batch()`. Price = `hourlyRateCents` x session minutes / 60.
-  2. The student confirms (no real payment yet): `CONFIRMED`, slot `BOOKED`, a session is created as `SCHEDULED` with a Jitsi meeting URL. Confirming again returns 200.
+  1. The student creates a booking: `PENDING`, the slot is `HELD`, `expiresAt` is 24 hours ahead, or the slot start if that is sooner. The booking and the hold are written in one `db.batch()`. Price = `hourlyRateCents` x session minutes / 60.
+  2. The mentor accepts (no real payment yet): `CONFIRMED`, slot `BOOKED`, a session is created as `SCHEDULED` with a Jitsi meeting URL. Accepting again returns 200. If the mentor declines: `CANCELLED`, slot `AVAILABLE`.
   3. The mentor can start the session from 15 minutes before `scheduledStart` until `scheduledEnd` (optional). The student completes it after `scheduledStart`. The booking becomes `COMPLETED`.
   4. The student can then review the booking. The mentor rating is updated.
 - Double booking is blocked by the slot status and by `uq_bookings_active_slot`.
@@ -358,7 +359,7 @@ The tests in `test/` run with Vitest and `@cloudflare/vitest-plugin` inside the 
 | `auth.test.ts` | Asgardeo token checks (expired, wrong audience or issuer, unknown key, `alg: none`, HS256, tampered), first login and register, suspended users, role from the database |
 | `user.test.ts` | `/api/users/me`, student profile, admin user list and status |
 | `mentor.test.ts` | profile, approval gate, verification review, expertise and search, slots |
-| `booking.test.ts` | slot HOLD and pricing, double booking, confirm, cancel, session window, review and rating, expiry cron |
+| `booking.test.ts` | slot HOLD and pricing, double booking, accept, decline, cancel, session window, review and rating, expiry cron |
 | `notification.test.ts` | booking notifications, read and read-all, conversations, messages, unread counts |
 | `file.test.ts` | R2 upload urls, key ownership, size limits, `GET /api/files` access rules |
 
@@ -441,7 +442,7 @@ After deploying, `<worker url>/api/health` must return `{"status":"UP",...}`.
 ## Known gaps and next steps
 
 - R2 checks the file size only when the key is saved, and files that are uploaded but never saved, or replaced later, are not deleted yet.
-- Payments are not implemented: confirming a booking needs no payment.
+- Payments are not implemented: a mentor accepts a booking without any payment.
 - `/internal/*` endpoints from the service specs are not built.
 - Not yet covered by Postman: `/api/health`, session start (success case), session complete, reviews. Reviews cannot be reached in the flow because a review needs a COMPLETED booking and a session can only start 15 minutes before its slot.
 - The spec docs in `docs/api` still describe the Spring microservices (ports 8081 to 8086, the payment-service confirm). The Worker follows them except where this README says otherwise.

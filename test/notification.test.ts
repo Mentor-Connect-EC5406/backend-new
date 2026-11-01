@@ -8,7 +8,7 @@ describe("notifications", () => {
     const { mentor, slotId } = await approvedMentor();
     const student = await registered("STUDENT");
     const { body: booking } = await api("POST", "/api/bookings", { token: student.token, body: { slotId } });
-    await api("POST", `/api/bookings/${booking.id}/confirm`, { token: student.token });
+    await api("POST", `/api/bookings/${booking.id}/accept`, { token: mentor.token });
     await api("POST", `/api/bookings/${booking.id}/cancel`, { token: student.token });
 
     const mine = await api("GET", "/api/notifications", { token: student.token });
@@ -16,14 +16,14 @@ describe("notifications", () => {
     expect(types).toEqual(["BOOKING_CANCELLED", "BOOKING_CONFIRMED", "BOOKING_CREATED"]);
     expect(mine.body.content.every((n: Note) => n.channel === "IN_APP" && n.status === "SENT" && n.readAt === null)).toBe(true);
     const mentorTypes = (await api("GET", "/api/notifications", { token: mentor.token })).body.content.map((n: Note) => n.type).sort();
-    expect(mentorTypes).toEqual(["BOOKING_CANCELLED", "BOOKING_CONFIRMED"]);
+    expect(mentorTypes).toEqual(["BOOKING_CANCELLED", "BOOKING_CONFIRMED", "BOOKING_CREATED"]);
   });
 
   it("are marked read one by one or all at once, only by their owner", async () => {
-    const { slotId } = await approvedMentor();
+    const { mentor, slotId } = await approvedMentor();
     const student = await registered("STUDENT");
     const { body: booking } = await api("POST", "/api/bookings", { token: student.token, body: { slotId } });
-    await api("POST", `/api/bookings/${booking.id}/confirm`, { token: student.token });
+    await api("POST", `/api/bookings/${booking.id}/accept`, { token: mentor.token });
     const [first] = (await api("GET", "/api/notifications", { token: student.token })).body.content as Note[];
 
     const stranger = await registered("STUDENT");

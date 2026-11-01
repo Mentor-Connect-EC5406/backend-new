@@ -29,8 +29,15 @@ bookingController.get("/api/bookings/:id", authenticate, async (c) => {
   return c.json(await bookings.getBooking(c.env, c.get("user"), c.req.param("id")), 200);
 });
 
-bookingController.post("/api/bookings/:id/confirm", authenticate, async (c) => {
-  return c.json(await bookings.confirmBooking(c.env, c.get("user"), c.req.param("id")), 200);
+bookingController.post("/api/bookings/:id/accept", authenticate, async (c) => {
+  return c.json(await bookings.acceptBooking(c.env, c.get("user"), c.req.param("id")), 200);
+});
+
+bookingController.post("/api/bookings/:id/decline", authenticate, async (c) => {
+  // the body is optional
+  const hasBody = (await c.req.raw.clone().text()).trim() !== "";
+  const body = hasBody ? await parseBody(c.req.raw, cancelBookingSchema) : {};
+  return c.json(await bookings.declineBooking(c.env, c.get("user"), c.req.param("id"), body), 200);
 });
 
 bookingController.post("/api/bookings/:id/cancel", authenticate, async (c) => {

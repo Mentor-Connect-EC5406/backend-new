@@ -15,7 +15,7 @@ import {
 import type { BookingRow } from "../entity/booking.entity";
 import * as repo from "../repository/booking.repository";
 
-const HOLD_MINUTES = 15;
+const RESPONSE_HOURS = 24;
 
 // "2026-11-05 09:00 UTC"
 export const formatUtc = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -66,7 +66,8 @@ export async function createBooking(env: Env, user: CurrentUser, req: CreateBook
     status: "PENDING",
     cancellation_reason: null,
     rescheduled_from_id: null,
-    expires_at: new Date(Date.parse(now) + HOLD_MINUTES * 60000).toISOString(),
+    // the mentor answers within 24 hours, and never later than the slot start
+    expires_at: new Date(Math.min(Date.parse(now) + RESPONSE_HOURS * 3600000, Date.parse(slot.start_time))).toISOString(),
     created_at: now,
     updated_at: now,
   };
@@ -83,7 +84,13 @@ export async function createBooking(env: Env, user: CurrentUser, req: CreateBook
     userId: user.id,
     type: "BOOKING_CREATED",
     title: "Booking created",
-    message: `Your session on ${formatUtc(row.scheduled_start)} is held for ${HOLD_MINUTES} minutes. Confirm it to keep it`,
+    message: `Your request for the session on ${formatUtc(row.scheduled_start)} was sent to the mentor`,
+  });
+  await createNotification(env.DB, {
+    userId: mentor.user_id,
+    type: "BOOKING_CREATED",
+    title: "New booking request",
+    message: `A student asked for the session on ${formatUtc(row.scheduled_start)}. Accept or decline it`,
   });
   return toBookingResponse(row);
 }
@@ -104,8 +111,8 @@ export async function getBooking(env: Env, user: CurrentUser, id: string): Promi
   return toBookingResponse(await loadForParty(env.DB, id, user, ["STUDENT", "MENTOR", "ADMIN"]));
 }
 
-export async function confirmBooking(env: Env, user: CurrentUser, id: string): Promise<BookingResponse> {
-  const booking = await loadForParty(env.DB, id, user, ["STUDENT"]);
+export async function acceptBooking(env: Env, user: CurrentUser, id: string): Promise<BookingResponse> {
+  const booking = await loadForParty(env.DB, id, user, ["MENTOR"]);
   if (booking.status === "CONFIRMED") return toBookingResponse(booking);
   if (booking.status !== "PENDING") throw conflict("Booking is not PENDING");
 
@@ -125,6 +132,27 @@ export async function confirmBooking(env: Env, user: CurrentUser, id: string): P
     }
   }
   return toBookingResponse(updated);
+}
+
+export async function declineBooking(
+  env: Env,
+  user: CurrentUser,
+  id: string,
+  req: CancelBookingRequest,
+): Promise<BookingResponse> {
+  const booking = await loadForParty(env.DB, id, user, ["MENTOR"]);
+  if (booking.status !== "PENDING") throw conflict("Booking is not PENDING");
+
+  if (!(await repo.cancel(env.DB, booking, req.reason || "Declined by the mentor", nowIso()))) {
+    throw conflict("Booking is not PENDING");
+  }
+  await createNotification(env.DB, {
+    userId: booking.student_id,
+    type: "BOOKING_CANCELLED",
+    title: "Booking declined",
+    message: `The mentor declined the session on ${formatUtc(booking.scheduled_start)}`,
+  });
+  return toBookingResponse((await repo.findById(env.DB, id))!);
 }
 
 export async function cancelBooking(
