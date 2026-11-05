@@ -17,12 +17,13 @@ const app = new Hono<AppEnv>();
 app.use("*", (c, next) => {
   const allowed = (c.env.ALLOWED_ORIGINS ?? "http://localhost:5173")
     .split(",")
-    .map((o) => o.trim())
+    .map((o) => o.trim().replace(/\/+$/, ""))
     .filter(Boolean);
   return cors({
     origin: (origin) => (allowed.includes(origin) ? origin : null),
     allowHeaders: ["Authorization", "Content-Type"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    maxAge: 86400,
   })(c, next);
 });
 
