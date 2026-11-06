@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173"
+ALLOWED_ORIGINS = "https://mentorconnect.mentorconnect.workers.dev,http://localhost:5173"
 ASGARDEO_ISSUER = "https://api.asgardeo.io/t/teamcylix/oauth2/token"
 ASGARDEO_JWKS_URL = "https://api.asgardeo.io/t/teamcylix/oauth2/jwks"
 ASGARDEO_CLIENT_ID = "m3dJhyb5oENx63qGPUVa9LrMpeQa"
