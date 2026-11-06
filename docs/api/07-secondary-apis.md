@@ -9,7 +9,7 @@ Access names: Any, Student, Mentor, Admin. Responses use the same status codes a
 |---|---|---|
 | user-service | 8081 | `/api/users` (admin routes) |
 | payment-service | 8084 | `/api/payments`, `/api/refunds` |
-| mentorship-service | 8085 | `/api/programs`, `/api/goals`, `/api/tasks` |
+| mentorship-service | 8085 | `/api/programs`, `/api/program-goals`, `/api/goals`, `/api/tasks` |
 | notification-service | 8086 | `/api/notifications`, `/api/conversations` |
 | analytic-service | 8087 | `/api/recommendations`, `/api/reports`, `/api/admin` |
 
@@ -53,22 +53,37 @@ Refunds (`POST /api/refunds`, `GET /api/refunds`, `PUT /api/refunds/{id}`) are d
 
 ## mentorship-service
 
-ProgramResponse:
+Long-term mentorship. A student requests a program from a mentor, the mentor accepts or declines it. While it is `ACTIVE` the mentor adds goals, tasks and notes and the student reports progress.
+
+```
+PENDING --mentor accept--> ACTIVE --> COMPLETED (mentor)
+   |                         +------> CANCELLED (student or mentor)
+   +--mentor decline--> DECLINED
+   +--student cancel--> CANCELLED
+   +--start date passed, not accepted--> CANCELLED (cron)
+```
+
+ProgramResponse (`mentorId` is the mentor profile id, `studentId` the student's user id):
 
 ```json
 {
   "id": "11111111-2222-4333-8444-555555555555",
   "studentId": "5f1c0b7e-2d1a-4c55-9a77-1c2f6f3a9b10",
+  "studentName": "Kamal Perera",
   "mentorId": "c1d2e3f4-0a1b-4c2d-8e3f-4a5b6c7d8e9f",
+  "mentorName": "Nimal Silva",
   "title": "Backend career plan",
   "description": "12 month plan",
   "durationMonths": 12,
   "startDate": "2026-11-01",
   "endDate": "2027-11-01",
-  "status": "ACTIVE",
-  "createdAt": "2026-11-01T10:00:00.000Z"
+  "status": "PENDING",
+  "createdAt": "2026-11-01T10:00:00.000Z",
+  "updatedAt": "2026-11-01T10:00:00.000Z"
 }
 ```
+
+`status` is `PENDING`, `ACTIVE`, `COMPLETED`, `CANCELLED` or `DECLINED`.
 
 GoalResponse:
 
@@ -105,60 +120,72 @@ ProgressResponse: `{ "id", "goalId", "studentId", "percentage": 40, "description
 
 NoteResponse: `{ "id", "programId", "mentorId", "studentId", "sessionId": null, "content", "visibility": "SHARED", "createdAt" }`.
 
+Program goals use `/api/program-goals/{id}` because `/api/goals` is used by the student's personal goals.
+
 | Method | Path | Purpose | Access |
 |---|---|---|---|
-| POST | `/api/programs` | Create a program | Mentor |
-| GET | `/api/programs` | Own programs (query: `status`, `page`, `size`) | Student, Mentor |
+| POST | `/api/programs` | Request a program from a mentor | Student |
+| GET | `/api/programs` | Own programs, newest first (query: `status`, `page`, `size`) | Student, Mentor |
 | GET | `/api/programs/{id}` | One program | Student, Mentor of it |
-| PUT | `/api/programs/{id}/status` | Complete or cancel | Mentor |
-| POST | `/api/programs/{id}/goals` | Add a goal | Mentor |
+| POST | `/api/programs/{id}/accept` | Accept a `PENDING` request | Mentor of it |
+| POST | `/api/programs/{id}/decline` | Decline a `PENDING` request | Mentor of it |
+| PUT | `/api/programs/{id}/status` | Complete or cancel | Student, Mentor of it |
+| POST | `/api/programs/{id}/goals` | Add a goal | Mentor of it |
 | GET | `/api/programs/{id}/goals` | List goals | Student, Mentor of it |
-| PUT | `/api/goals/{id}` | Edit a goal | Mentor |
-| POST | `/api/goals/{id}/tasks` | Add a task | Mentor |
+| PUT | `/api/program-goals/{id}` | Edit a goal | Mentor of it |
+| POST | `/api/program-goals/{id}/tasks` | Add a task | Mentor of it |
 | GET | `/api/programs/{id}/tasks` | List tasks (query: `status`, `goalId`) | Student, Mentor of it |
-| PUT | `/api/tasks/{id}` | Edit a task | Mentor |
+| PUT | `/api/tasks/{id}` | Edit a task | Mentor of it |
 | PUT | `/api/tasks/{id}/status` | Change task status | Student, Mentor of it |
-| POST | `/api/goals/{id}/progress` | Add a progress update | Student |
-| GET | `/api/goals/{id}/progress` | List progress updates | Student, Mentor of it |
-| POST | `/api/programs/{id}/notes` | Add a note | Mentor |
-| GET | `/api/programs/{id}/notes` | List notes. A student gets `SHARED` notes only | Student, Mentor of it |
+| POST | `/api/program-goals/{id}/progress` | Add a progress update | Student of it |
+| GET | `/api/program-goals/{id}/progress` | List progress updates, newest first | Student, Mentor of it |
+| POST | `/api/programs/{id}/notes` | Add a note | Mentor of it |
+| GET | `/api/programs/{id}/notes` | List notes, newest first. A student gets `SHARED` notes only | Student, Mentor of it |
+
+Lists of goals, tasks, progress updates and notes are plain JSON arrays (no paging). Goals are oldest first, tasks are by due date.
+
+Common responses: `404` program, goal or task not found, `403` the caller is not the student or mentor of the program (or has the wrong role). Adding or editing goals, tasks, task status, progress and notes needs an `ACTIVE` program, otherwise `409`.
 
 Request bodies:
 
 ```json
-{ "studentId": "5f1c0b7e-...", "title": "Backend career plan", "description": "12 month plan", "durationMonths": 12, "startDate": "2026-11-01" }
+{ "mentorId": "c1d2e3f4-...", "title": "Backend career plan", "description": "12 month plan", "durationMonths": 12, "startDate": "2026-12-01" }
 ```
-`POST /api/programs`. `durationMonths` is 6, 12, 24 or 48. `endDate` is calculated. `409` if the mentor already has an `ACTIVE` program with this student.
+`POST /api/programs`. `title` 1 to 150 characters, `description` optional up to 2000. `durationMonths` is 6, 12, 24 or 48. `startDate` is `YYYY-MM-DD`, today or later (UTC). `endDate` is calculated. `201` ProgramResponse with status `PENDING`, the mentor gets a notification. `404` mentor not found, not APPROVED or not ACTIVE. `409` the student already has a `PENDING` or `ACTIVE` program with this mentor.
+
+`POST /api/programs/{id}/accept` and `POST /api/programs/{id}/decline`: no body. `200` ProgramResponse (`ACTIVE` or `DECLINED`), the student gets a notification. `409` the program is not `PENDING`.
+
+A `PENDING` request that is not accepted before its `startDate` is set to `CANCELLED` by the cron, and the student gets a notification.
 
 ```json
 { "status": "COMPLETED" }
 ```
-`PUT /api/programs/{id}/status`. Allowed: `COMPLETED`, `CANCELLED`.
+`PUT /api/programs/{id}/status`. `COMPLETED`: mentor only, program `ACTIVE`. `CANCELLED`: the student while `PENDING` or `ACTIVE`, the mentor while `ACTIVE` (a mentor uses decline for a `PENDING` request). The other side gets a notification. `200` ProgramResponse, `403` not allowed for this role, `409` wrong status.
 
 ```json
 { "title": "Learn Spring Boot", "description": null, "targetDate": "2027-02-01", "status": "IN_PROGRESS" }
 ```
-`POST /api/programs/{id}/goals` and `PUT /api/goals/{id}`. `status` is only used on PUT.
+`POST /api/programs/{id}/goals` and `PUT /api/program-goals/{id}`. `title` 1 to 150 characters, `description` up to 2000, `targetDate` `YYYY-MM-DD` or null. `status` (`NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`) is only used on PUT. PUT replaces `title`, `description` and `targetDate`; `status` keeps its value when not sent. `201` / `200` GoalResponse.
 
 ```json
 { "title": "Build a REST API", "description": null, "dueDate": "2026-12-01", "priority": "HIGH" }
 ```
-`POST /api/goals/{id}/tasks` and `PUT /api/tasks/{id}`. `priority` is `LOW`, `MEDIUM` or `HIGH`. `assignedBy` is the mentor and `assignedTo` is the program's student, both set by the server.
+`POST /api/program-goals/{id}/tasks` and `PUT /api/tasks/{id}`. `priority` is `LOW`, `MEDIUM` (default) or `HIGH`. `assignedBy` is the mentor's user id and `assignedTo` is the program's student, both set by the server. `201` / `200` TaskResponse.
 
 ```json
 { "status": "IN_PROGRESS" }
 ```
-`PUT /api/tasks/{id}/status`. Values: `TODO`, `IN_PROGRESS`, `DONE`, `CANCELLED`.
+`PUT /api/tasks/{id}/status`. Values: `TODO`, `IN_PROGRESS`, `DONE`, `CANCELLED`. `200` TaskResponse.
 
 ```json
 { "percentage": 40, "description": "Finished controllers" }
 ```
-`POST /api/goals/{id}/progress`. `percentage` is 0 to 100. The goal's `progressPercentage` is set to the latest update.
+`POST /api/program-goals/{id}/progress`. `percentage` is a whole number 0 to 100, `description` optional up to 1000. The goal's `progressPercentage` is set to the latest update. `201` ProgressResponse.
 
 ```json
 { "content": "Good progress on APIs", "visibility": "SHARED", "sessionId": null }
 ```
-`POST /api/programs/{id}/notes`. `visibility` is `PRIVATE` or `SHARED`.
+`POST /api/programs/{id}/notes`. `content` 1 to 2000 characters. `visibility` is `PRIVATE` (default) or `SHARED`. `sessionId` is optional, it must be a session of a booking between the same mentor and student (`400` otherwise). `201` NoteResponse.
 
 ## notification-service
 

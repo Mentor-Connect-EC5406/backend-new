@@ -74,6 +74,23 @@ Known gaps:
 | mentorship | POST | /api/goals | ✅ | ✅ |
 | mentorship | PATCH | /api/goals/{id} | ✅ | ✅ |
 | mentorship | DELETE | /api/goals/{id} | ✅ | ✅ |
+| mentorship | POST | /api/programs | ✅ |  |
+| mentorship | GET | /api/programs | ✅ |  |
+| mentorship | GET | /api/programs/{id} | ✅ |  |
+| mentorship | POST | /api/programs/{id}/accept | ✅ |  |
+| mentorship | POST | /api/programs/{id}/decline | ✅ |  |
+| mentorship | PUT | /api/programs/{id}/status | ✅ |  |
+| mentorship | POST | /api/programs/{id}/goals | ✅ |  |
+| mentorship | GET | /api/programs/{id}/goals | ✅ |  |
+| mentorship | PUT | /api/program-goals/{id} | ✅ |  |
+| mentorship | POST | /api/program-goals/{id}/tasks | ✅ |  |
+| mentorship | GET | /api/programs/{id}/tasks | ✅ |  |
+| mentorship | PUT | /api/tasks/{id} | ✅ |  |
+| mentorship | PUT | /api/tasks/{id}/status | ✅ |  |
+| mentorship | POST | /api/program-goals/{id}/progress | ✅ |  |
+| mentorship | GET | /api/program-goals/{id}/progress | ✅ |  |
+| mentorship | POST | /api/programs/{id}/notes | ✅ |  |
+| mentorship | GET | /api/programs/{id}/notes | ✅ |  |
 | analytic | POST | /api/reports | ✅ | ✅ |
 | analytic | GET | /api/reports/mine | ✅ | ✅ |
 | analytic | GET | /api/reports | ✅ | ✅ |

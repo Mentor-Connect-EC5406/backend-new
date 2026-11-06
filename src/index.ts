@@ -7,6 +7,8 @@ import { bookingController } from "./booking/controller/booking.controller";
 import { notificationController } from "./notification/controller/notification.controller";
 import { fileController } from "./file/controller/file.controller";
 import { goalController } from "./mentorship/controller/goal.controller";
+import { programController } from "./mentorship/controller/program.controller";
+import { expirePendingPrograms } from "./mentorship/service/program.service";
 import { reportController } from "./analytic/controller/report.controller";
 import { expirePendingBookings } from "./booking/service/booking-expiry.service";
 import { errorHandler, notFoundHandler } from "./exception/error-handler";
@@ -35,6 +37,7 @@ app.route("/", bookingController);
 app.route("/", notificationController);
 app.route("/", fileController);
 app.route("/", goalController);
+app.route("/", programController);
 app.route("/", reportController);
 
 app.onError(errorHandler);
@@ -44,5 +47,6 @@ export default {
   fetch: app.fetch,
   scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(expirePendingBookings(env));
+    ctx.waitUntil(expirePendingPrograms(env.DB));
   },
 } satisfies ExportedHandler<Env>;

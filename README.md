@@ -44,8 +44,9 @@ In Sprint 2:
 - auth, user, mentor, booking, notification (including conversations and messages)
 - admin user management and mentor verification review
 - file uploads to Cloudflare R2 (profile images, verification documents, chat images)
+- long-term mentorship programs (student request, mentor accept, goals, tasks, progress, notes)
 
-Out of scope (later): payments and Lemon Squeezy, real email, analytics, mentorship programs, `/internal/*` service endpoints.
+Out of scope (later): payments and Lemon Squeezy, real email, analytics, bootcamps, `/internal/*` service endpoints.
 
 ## Project structure
 

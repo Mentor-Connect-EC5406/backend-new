@@ -9,8 +9,8 @@
 
 ## Sprint 2 scope
 - In: auth, user, mentor, booking, notification (incl. conversations and messages), admin user management and verification review
-- Also in: saved mentors, personal student goals (src/mentorship), reports and GET /api/admin/stats (src/analytic)
-- Out (later): payments and Lemon Squeezy, real email, /api/admin/analytics, mentorship programs
+- Also in: saved mentors, personal student goals and long-term mentorship programs (src/mentorship), reports and GET /api/admin/stats (src/analytic)
+- Out (later): payments and Lemon Squeezy, real email, /api/admin/analytics, bootcamps
 
 ## Folder structure
 src/
@@ -66,7 +66,9 @@ docs/database/schema/: source schemas from the Spring repo
 - Cron (every minute): cancel expired PENDING bookings and set their slot back to AVAILABLE
 - POST /api/bookings/{id}/session/complete: only the student of the booking, after scheduledStart. Booking and session COMPLETED
 - Reviews only for COMPLETED bookings (trigger trg_reviews_require_completed), comment 20 to 1000 characters. Update the mentor rating after a review
-- Notifications: other modules call the notification service function (no HTTP). Create one on booking created, confirmed and cancelled
+- Notifications: other modules call the notification service function (no HTTP). Create one on booking created, confirmed and cancelled, and on program requested, accepted, declined, cancelled and completed
+- Programs: a STUDENT requests one from a public mentor (PENDING), only the mentor accepts (ACTIVE) or declines (DECLINED). One PENDING or ACTIVE program per student and mentor (409). Goals, tasks, progress and notes only on ACTIVE programs
+- Cron also cancels PENDING programs whose start date has passed
 - Admin cannot suspend their own account (409)
 
 ## Config and secrets
