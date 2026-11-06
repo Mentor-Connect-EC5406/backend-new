@@ -19,6 +19,8 @@ erDiagram
         TEXT user_id FK
         TEXT university
         TEXT degree
+        TEXT interests "JSON array"
+        TEXT profile_extras "JSON"
     }
 ```
 
@@ -31,12 +33,19 @@ erDiagram
     mentors ||--o{ mentor_expertises : has
     expertises ||--o{ mentor_expertises : usedBy
     expertise_categories ||--|{ expertises : contains
+    mentors ||--o{ saved_mentors : savedBy
     mentors {
         TEXT id PK
         TEXT user_id UK "logical"
         INTEGER hourly_rate_cents
         REAL rating_avg
         TEXT verification_status
+        TEXT skills "JSON array"
+        TEXT profile_extras "JSON"
+    }
+    saved_mentors {
+        TEXT student_id PK "logical"
+        TEXT mentor_id PK
     }
     availability_slots {
         TEXT id PK
@@ -133,7 +142,7 @@ erDiagram
         TEXT student_id "logical"
         TEXT mentor_id "logical"
         INTEGER duration_months
-        TEXT status
+        TEXT status "PENDING ACTIVE COMPLETED CANCELLED DECLINED"
     }
     goals {
         TEXT id PK
@@ -156,6 +165,11 @@ erDiagram
         TEXT id PK
         TEXT program_id FK
         TEXT visibility
+    }
+    student_goals {
+        TEXT id PK
+        TEXT student_id "logical"
+        INTEGER progress
     }
 ```
 

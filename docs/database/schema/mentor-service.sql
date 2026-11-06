@@ -1,5 +1,5 @@
 -- mentor-service (mentor_service.db) Port 8082
--- Owns: mentors, expertise taxonomy, availability_slots, mentor_verifications
+-- Owns: mentors, expertise taxonomy, availability_slots, mentor_verifications, saved_mentors
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE mentors (
@@ -16,7 +16,9 @@ CREATE TABLE mentors (
                          rating_count        INTEGER NOT NULL DEFAULT 0 CHECK (rating_count >= 0),
                          verification_status TEXT NOT NULL DEFAULT 'PENDING'
                              CHECK (verification_status IN ('PENDING', 'APPROVED', 'REJECTED')),
-                         created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                         skills              TEXT NOT NULL DEFAULT '[]',         -- JSON array of strings
+                         profile_extras      TEXT NOT NULL DEFAULT '{}',         -- JSON: headline, location, links, experience, education, ...
+                         created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                          updated_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
@@ -83,3 +85,11 @@ CREATE TABLE mentor_verifications (
 
 CREATE INDEX idx_verifications_mentor ON mentor_verifications (mentor_id);
 CREATE INDEX idx_verifications_status ON mentor_verifications (status);
+
+-- ---------- Saved mentors ----------
+CREATE TABLE saved_mentors (
+                               student_id TEXT NOT NULL,                                -- -> user-service.users.id (logical)
+                               mentor_id  TEXT NOT NULL REFERENCES mentors (id) ON DELETE CASCADE,
+                               created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                               PRIMARY KEY (student_id, mentor_id)
+);

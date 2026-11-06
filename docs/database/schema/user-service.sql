@@ -31,6 +31,7 @@ CREATE TABLE student_profiles (
                                   degree        TEXT,
                                   academic_year INTEGER CHECK (academic_year BETWEEN 1 AND 10),
                                   bio           TEXT,
-                                  interests     TEXT,
+                                  interests     TEXT,                                   -- JSON array of strings
+                                  profile_extras TEXT NOT NULL DEFAULT '{}',            -- JSON: headline, location, links, education, ...
                                   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
