@@ -1,6 +1,7 @@
 PRAGMA foreign_keys = ON;
 
 -- student_id, mentor_id point to other services (no FK)
+-- a student requests a program (PENDING), the mentor accepts (ACTIVE) or declines (DECLINED)
 CREATE TABLE mentorship_programs (
                                      id              TEXT PRIMARY KEY CHECK (length(id) = 36),
                                      student_id      TEXT NOT NULL,
@@ -10,8 +11,8 @@ CREATE TABLE mentorship_programs (
                                      duration_months INTEGER NOT NULL CHECK (duration_months IN (6, 12, 24, 48)),
                                      start_date      TEXT NOT NULL,
                                      end_date        TEXT NOT NULL,
-                                     status          TEXT NOT NULL DEFAULT 'ACTIVE'
-                                         CHECK (status IN ('ACTIVE', 'COMPLETED', 'CANCELLED')),
+                                     status          TEXT NOT NULL DEFAULT 'PENDING'
+                                         CHECK (status IN ('PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'DECLINED')),
                                      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                                      updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                                      CHECK (end_date > start_date)
@@ -19,6 +20,10 @@ CREATE TABLE mentorship_programs (
 
 CREATE INDEX idx_programs_student ON mentorship_programs (student_id, status);
 CREATE INDEX idx_programs_mentor  ON mentorship_programs (mentor_id, status);
+CREATE INDEX idx_programs_pending ON mentorship_programs (status, start_date);
+
+-- one open request or program per student and mentor
+CREATE UNIQUE INDEX uq_programs_open ON mentorship_programs (student_id, mentor_id) WHERE status IN ('PENDING', 'ACTIVE');
 
 CREATE TABLE goals (
                        id                  TEXT PRIMARY KEY CHECK (length(id) = 36),
@@ -83,3 +88,16 @@ CREATE TABLE mentor_notes (
 
 CREATE INDEX idx_notes_student ON mentor_notes (student_id, visibility);
 CREATE INDEX idx_notes_program ON mentor_notes (program_id);
+
+-- personal career goals of a student, not the program goals above
+CREATE TABLE student_goals (
+                               id          TEXT PRIMARY KEY CHECK (length(id) = 36),
+                               student_id  TEXT NOT NULL,
+                               title       TEXT NOT NULL,
+                               target_date TEXT,
+                               progress    INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+                               created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                               updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX idx_student_goals_student ON student_goals (student_id, created_at DESC);
